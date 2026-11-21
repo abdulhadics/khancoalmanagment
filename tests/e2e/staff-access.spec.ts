@@ -258,3 +258,110 @@ test("Owner adds dispatch parties in place and posts an exact-priced truck", asy
   await expect(page.getByRole("status")).toHaveText("Dispatch saved.");
   await expect(page.getByRole("row", { name: /KCS-901/ })).toHaveCount(0);
 });
+
+test("Owner records a quick receipt and a supplier payment with voucher PDFs", async ({
+  page,
+}) => {
+  test.setTimeout(60_000);
+  const password = randomBytes(24).toString("base64url");
+  await createBrowserOwner("browser-account-owner", password, false);
+  await logIn(page, "browser-account-owner", password);
+  await expect(
+    page.getByRole("heading", { name: "Dashboard", exact: true }),
+  ).toBeVisible();
+
+  await page.goto("/customers/new");
+  await page
+    .getByRole("textbox", { name: "Customer name", exact: true })
+    .fill("Payment Test Customer");
+  await page
+    .getByRole("textbox", { name: "Opening receivable", exact: true })
+    .fill("1000.00");
+  await page
+    .getByRole("button", { name: "Create customer", exact: true })
+    .click();
+  await expect(page.getByRole("status")).toHaveText("Customer saved.");
+  const customerId = new URL(page.url()).pathname.split("/").at(-1)!;
+
+  await page.goto("/suppliers/new");
+  await page
+    .getByRole("textbox", { name: "Supplier", exact: true })
+    .fill("Payment Test Supplier");
+  await page
+    .getByRole("textbox", { name: "Opening payable (Rs.)", exact: true })
+    .fill("900.00");
+  await page
+    .getByRole("button", { name: "Create supplier", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Payment Test Supplier" }),
+  ).toBeVisible();
+  const supplierId = new URL(page.url()).pathname.split("/").at(-1)!;
+
+  await page
+    .getByRole("button", { name: "Quick receive", exact: true })
+    .click();
+  const quick = page.getByRole("dialog", { name: "Quick receive" });
+  await quick
+    .getByRole("combobox", { name: "Customer", exact: true })
+    .selectOption(customerId);
+  await expect(quick.getByText(/1,000\.00/)).toBeVisible();
+  await quick
+    .getByRole("combobox", { name: "Bank or cash account", exact: true })
+    .selectOption({ label: "Cash" });
+  await quick
+    .getByRole("textbox", { name: "Amount", exact: true })
+    .fill("125.25");
+  await quick
+    .getByRole("button", { name: "Record receipt", exact: true })
+    .click();
+  await expect(quick.getByRole("status")).toContainText("Voucher recorded.");
+  const pdf = await quick
+    .getByRole("link", { name: "Open voucher PDF" })
+    .getAttribute("href");
+  const response = await page.request.get(pdf!);
+  expect(response.headers()["content-type"]).toMatch(/application\/pdf/);
+  expect((await response.body()).subarray(0, 4).toString()).toBe("%PDF");
+  await quick.getByRole("button", { name: "Close", exact: true }).click();
+
+  await page.goto(
+    "/account?customerQ=Payment+Test+Customer&supplierQ=Payment+Test+Supplier",
+  );
+  const pay = page.getByRole("region", { name: "Supplier payment" });
+  await pay
+    .getByRole("combobox", { name: "Supplier", exact: true })
+    .selectOption(supplierId);
+  await pay
+    .getByRole("combobox", { name: "Bank or cash account", exact: true })
+    .selectOption({ label: "Cash" });
+  await pay
+    .getByRole("textbox", { name: "Amount", exact: true })
+    .fill("300.00");
+  await pay
+    .getByRole("button", { name: "Record payment", exact: true })
+    .click();
+  await expect(pay.getByRole("status")).toContainText("Voucher recorded.");
+
+  const customers = page.locator("#customer-balances");
+  const suppliers = page.locator("#supplier-balances");
+  await expect(
+    customers.getByRole("row", { name: /Payment Test Customer/ }),
+  ).toContainText(/874\.75/);
+  await expect(
+    suppliers.getByRole("row", { name: /Payment Test Supplier/ }),
+  ).toContainText(/600\.00/);
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({
+    path: test.info().outputPath("account-desktop.png"),
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({
+    path: test.info().outputPath("account-mobile.png"),
+    fullPage: true,
+  });
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth),
+  ).toBeLessThanOrEqual(390);
+});

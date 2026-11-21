@@ -5,23 +5,8 @@ import { join } from "node:path";
 import PDFDocument from "pdfkit";
 
 import { formatDocumentDate } from "@/domain/document-format";
-import type { WeightUnit } from "@/generated/prisma/enums";
-import { dispatchPrint } from "@/i18n/messages/dispatch-print-en";
-
-export type DocumentProfile = {
-  name: string;
-  tagline: string | null;
-  address: string | null;
-  phone: string | null;
-  email: string | null;
-  logoBytes: Uint8Array | null;
-  logoMediaType: string | null;
-  currencySymbol: string;
-  weightUnit: WeightUnit;
-  dateFormat: string;
-  numberFormat: string;
-  footer: string | null;
-};
+import { documentPrint } from "@/i18n/messages/print-en";
+import type { DocumentProfile } from "./print-data";
 
 export type PdfDocument = InstanceType<typeof PDFDocument>;
 type DocumentOptions = {
@@ -70,6 +55,28 @@ export function documentWidth(doc: PdfDocument): number {
 
 export function documentBottom(doc: PdfDocument): number {
   return doc.page.height - bottomMargin;
+}
+
+export function drawDocumentField(
+  doc: PdfDocument,
+  label: string,
+  value: string | null,
+  x: number,
+  y: number,
+  width: number,
+) {
+  doc
+    .font("Inter")
+    .fillColor(documentMutedInk)
+    .fontSize(8)
+    .text(label, x, y, { width });
+  doc
+    .fillColor(documentInk)
+    .fontSize(11)
+    .text(value ? printableText(value) : documentPrint.missing, x, doc.y + 2, {
+      width,
+    });
+  return doc.y;
 }
 
 function addLetterhead(doc: PdfDocument, profile: DocumentProfile) {
@@ -147,15 +154,15 @@ function addPageFooters(doc: PdfDocument, options: DocumentOptions) {
       doc.text(footer, documentInset, y + 7, { width, height: 38 });
     }
     const metadataY = doc.page.height - 27;
-    const author = dispatchPrint.prepared(printableText(options.preparedBy));
-    const generated = dispatchPrint.generated(date);
+    const author = documentPrint.prepared(printableText(options.preparedBy));
+    const generated = documentPrint.generated(date);
     doc.text(`${author}  |  ${generated}`, documentInset, metadataY, {
       width: width - 105,
       height: 14,
       ellipsis: true,
     });
     doc.text(
-      dispatchPrint.page(page + 1, pages.count),
+      documentPrint.page(page + 1, pages.count),
       documentInset + width - 94,
       metadataY,
       {

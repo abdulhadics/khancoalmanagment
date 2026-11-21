@@ -650,3 +650,15 @@ button:not(:disabled) {
     transition: none !important;
   }
 }
+
+@media (max-width: 24rem) {
+  .workspace-toolbar {
+    gap: 0.5rem;
+    padding-inline: 0.75rem;
+  }
+
+  .workspace-date > svg,
+  .account-menu summary > svg:last-child {
+    display: none;
+  }
+}

@@ -1,6 +1,6 @@
 # KhanCoalSupplier
 
-KhanCoalSupplier is a coal-supply workspace for recording truck dispatches, customer receipts, supplier payments, and balances in Pakistan. This version includes staff access, customer and supplier records, company and bank settings, dated opening balances, and bulk dispatch entry with PDF slips.
+KhanCoalSupplier is a coal-supply workspace for recording truck dispatches, customer receipts, supplier payments, and balances in Pakistan. This version includes staff access, customer and supplier records, company and bank settings, dated opening balances, bulk dispatch entry, receipts, payments, and printable slips and vouchers.
 
 ## Run locally on Windows
 

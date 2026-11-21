@@ -16,7 +16,12 @@ export type PartyRollupTotals = Activity & { due: string; advance: string };
 
 type BigIntTrucks<T extends Activity> = Omit<T, "trucks"> & { trucks: bigint };
 
-function rollupQuery(party: Party, matches: Prisma.Sql, asOf: string | Date) {
+// matches selects each in-scope party UUID as `id`.
+export function partyLedgerRollupQuery(
+  party: Party,
+  matches: Prisma.Sql,
+  asOf: string | Date,
+) {
   const customer = party === "customer";
   const partyId = customer
     ? Prisma.sql`entry.customer_id`
@@ -58,7 +63,7 @@ export async function getPartyRollups(
   const matches = Prisma.sql`SELECT DISTINCT id FROM (VALUES ${ids}) AS requested(id)`;
   const rows = await tx.$queryRaw<BigIntTrucks<PartyRollup>[]>(Prisma.sql`
     SELECT "partyId", trucks, weight::text, billed::text, settled::text, balance::text
-    FROM (${rollupQuery(party, matches, asOf)}) AS rollup
+    FROM (${partyLedgerRollupQuery(party, matches, asOf)}) AS rollup
   `);
   return rows.map((row) => ({ ...row, trucks: Number(row.trucks) }));
 }
@@ -80,7 +85,7 @@ export async function getPartyRollupTotals(
       COALESCE(SUM(balance), 0)::text AS balance,
       COALESCE(SUM(balance) FILTER (WHERE balance > 0), 0)::text AS due,
       (-COALESCE(SUM(balance) FILTER (WHERE balance < 0), 0))::text AS advance
-    FROM (${rollupQuery(party, matches, asOf)}) AS rollup
+    FROM (${partyLedgerRollupQuery(party, matches, asOf)}) AS rollup
   `);
   return { ...row, trucks: Number(row.trucks) };
 }

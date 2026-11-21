@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import type { DocumentProfile } from "../../src/server/documents/pdf";
+import type { DocumentProfile } from "../../src/server/documents/print-data";
+import { pdfResponse } from "../../src/server/documents/print-response";
 import {
   renderDailyDispatch,
   renderDispatchSlip,
 } from "../../src/server/orders/dispatch-pdf";
 import type { DispatchSummaryRow } from "../../src/server/orders/print";
-import { pdfResponse } from "../../src/server/orders/print-response";
 
 const profile: DocumentProfile = {
   name: "Khan Coal Supplier",

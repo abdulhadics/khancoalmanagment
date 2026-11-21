@@ -18,15 +18,10 @@ export const dispatchPrint = {
   pending: "Pending pricing",
   total: "Total",
   entryCount: (count: string) => `${count} dispatches`,
-  prepared: (name: string) => `Prepared by ${name}`,
-  generated: (date: string) => `Generated ${date}`,
-  page: (number: number, count: number) => `Page ${number} of ${count}`,
   empty: "No dispatches match this date.",
   invalidDate: "Choose a valid dispatch date.",
-  unavailable: "The document is unavailable.",
   tooMany:
     "This date has too many dispatches for one PDF. Print individual slips or use the report filters.",
-  rateLimited: "Too many print requests. Try again in a few minutes.",
   units: { TON: "Ton", TONNE: "Tonne", MT: "MT" },
   missing: "-",
 } as const;

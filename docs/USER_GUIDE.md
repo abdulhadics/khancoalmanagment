@@ -39,3 +39,11 @@ Use **Same supplier for all** and **Same mine for all** when a batch uses one so
 Choose **Add all orders** to save the batch. Correct any highlighted fields and resubmit with the same form. The Accountant or Owner can price and post the Operator's pending dispatches.
 
 Use **Orders for selected date** to review the saved dispatches. Open **Slip PDF** for one dispatch or **Print day report** for the selected date. **Edit** opens the fields allowed by your role. **Duplicate** copies a dispatch into a new form. Owners can void a dispatch with a reason while retaining its order number and audit history.
+
+## Receipts and supplier payments
+
+Open **Account** to record a customer receipt or supplier payment. Use **Quick receive** from the header to open a receipt form while staying on your current screen. Select a party and business date to see the balance on that date. For cash or bank transactions, choose the active account. Enter a reference for bank payments and cheques. Add a note for an adjustment.
+
+Review the amount before saving. If it exceeds the outstanding balance, confirm the advance. Open the new voucher PDF to print the receipt or payment. The customer and supplier tables show the balances after posting.
+
+Use **Account transactions** to find vouchers by party, reference, date, method, or status. The account shows cheques in cash totals at issuance and lists the uncleared amounts separately. Mark a cheque deposited before marking it cleared or bounced. Enter the effective date and a reason for a bounce. The ledger reverses the cheque on that date. An Owner can void a voucher with a reason. The original voucher and reversal remain available for review.

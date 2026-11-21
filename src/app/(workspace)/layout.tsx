@@ -8,6 +8,7 @@ import {
 } from "@/components/workspace/navigation";
 import { DesktopSidebar, MobileSidebar } from "@/components/workspace/sidebar";
 import { Button } from "@/components/ui/button";
+import { QuickReceive } from "@/components/workspace/quick-receive";
 import { can } from "@/domain/permissions";
 import { messages } from "@/i18n";
 import { auth } from "@/i18n/messages/auth-en";
@@ -41,6 +42,7 @@ export default async function WorkspaceLayout({
             <CalendarDays aria-hidden="true" size={17} />
             {today}
           </span>
+          {can(actor.roleCode, "account.manage") && <QuickReceive />}
           {can(actor.roleCode, "orders.create") && (
             <Button asChild size="sm">
               <Link href="/orders" aria-label={orders.newOrder}>

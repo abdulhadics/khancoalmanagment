@@ -9,6 +9,7 @@ import {
   documentRule,
   documentTint,
   documentWidth,
+  drawDocumentField,
   printableText,
   renderPdf,
   type PdfDocument,
@@ -21,22 +22,6 @@ import type {
 
 function statusLabel(row: DispatchSummaryRow) {
   return row.status === "POSTED" ? copy.posted : copy.pending;
-}
-
-function slipField(
-  doc: PdfDocument,
-  label: string,
-  value: string | null,
-  x: number,
-  y: number,
-  width: number,
-) {
-  doc.fillColor(documentMutedInk).fontSize(8).text(label, x, y, { width });
-  doc
-    .fillColor(documentInk)
-    .fontSize(11)
-    .text(value ? printableText(value) : copy.missing, x, doc.y + 2, { width });
-  return doc.y;
 }
 
 export function renderDispatchSlip(data: SlipPrintData) {
@@ -79,7 +64,7 @@ export function renderDispatchSlip(data: SlipPrintData) {
       let y = doc.y + 28;
       for (let index = 0; index < fields.length; index += 2) {
         const [first, second] = fields.slice(index, index + 2);
-        const bottom = slipField(
+        const bottom = drawDocumentField(
           doc,
           first[0],
           first[1],
@@ -88,7 +73,7 @@ export function renderDispatchSlip(data: SlipPrintData) {
           column,
         );
         const otherBottom = second
-          ? slipField(
+          ? drawDocumentField(
               doc,
               second[0],
               second[1],
@@ -107,7 +92,14 @@ export function renderDispatchSlip(data: SlipPrintData) {
           .moveTo(documentInset, y + 1)
           .lineTo(documentInset + width, y + 1)
           .stroke();
-        slipField(doc, copy.notes, data.notes, documentInset, y + 13, width);
+        drawDocumentField(
+          doc,
+          copy.notes,
+          data.notes,
+          documentInset,
+          y + 13,
+          width,
+        );
       }
     },
   );
