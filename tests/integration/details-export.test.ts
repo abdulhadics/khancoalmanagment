@@ -9,6 +9,7 @@ import { getSession, type SessionActor } from "../../src/server/auth/session";
 import { makePrisma } from "../../src/server/db/connect";
 import { exportDetails } from "../../src/server/details/exports";
 import { createOrders } from "../../src/server/orders/create";
+import { exportReport } from "../../src/server/reporting/exports";
 
 const now = new Date("2043-05-03T19:03:00.000Z");
 const date = "2043-05-03";
@@ -247,6 +248,141 @@ describe("detail exports on PostgreSQL", () => {
         { targetType: "sales_details", after: { format: "csv", records: 1 } },
         { targetType: "customer_ledger", after: { format: "csv", records: 1 } },
         { targetType: "supplier_ledger", after: { format: "pdf", records: 1 } },
+      ]);
+
+      const reportDates = { from: date, to: date };
+      for (const groupBy of ["entry", "date", "customer", "supplier", "mine"]) {
+        const report = await exportReport(
+          db,
+          accountant,
+          "sales",
+          new URLSearchParams({
+            ...reportDates,
+            format: "csv",
+            groupBy,
+            customerId: customer.id,
+          }),
+          context,
+          now,
+        );
+        expect(report.status).toBe(200);
+        const csv = await report.text();
+        expect(csv).toContain('"Grand total"');
+        expect(csv).toContain("1,10.005,30.12,30.02,0.10\r\n");
+      }
+
+      const customerReport = await exportReport(
+        db,
+        accountant,
+        "customers",
+        new URLSearchParams({
+          ...reportDates,
+          format: "csv",
+          q: customer.code,
+        }),
+        context,
+        now,
+      );
+      expect(customerReport.status).toBe(200);
+      expect(await customerReport.text()).toContain(
+        "1,10.005,30.12,30.12,10.50,0.00,49.74\r\n",
+      );
+      const supplierReport = await exportReport(
+        db,
+        accountant,
+        "suppliers",
+        new URLSearchParams({
+          ...reportDates,
+          format: "csv",
+          q: supplier.code,
+        }),
+        context,
+        now,
+      );
+      expect(supplierReport.status).toBe(200);
+      expect(await supplierReport.text()).toContain(
+        "1,10.005,30.02,30.02,0.00,0.00,60.04\r\n",
+      );
+
+      const singleCustomer = await exportReport(
+        db,
+        accountant,
+        "customer",
+        new URLSearchParams({
+          ...reportDates,
+          format: "csv",
+          partyId: customer.id,
+        }),
+        context,
+        now,
+      );
+      expect(singleCustomer.status).toBe(200);
+      const statement = await singleCustomer.text();
+      expect(statement.indexOf(currentRow.orderNo)).toBeGreaterThan(-1);
+      expect(statement.indexOf(voucher.voucherNo)).toBeGreaterThan(
+        statement.indexOf(currentRow.orderNo),
+      );
+      expect(statement).toMatch(/"Closing balance".*49\.74\r\n/);
+
+      const singleSupplier = await exportReport(
+        db,
+        accountant,
+        "supplier",
+        new URLSearchParams({
+          ...reportDates,
+          format: "pdf",
+          partyId: supplier.id,
+        }),
+        context,
+        now,
+      );
+      expect(singleSupplier.status).toBe(200);
+      expect(singleSupplier.headers.get("Content-Disposition")).toMatch(
+        /^inline;/,
+      );
+      expect(
+        Buffer.from(await singleSupplier.arrayBuffer()).toString("latin1"),
+      ).toContain("Single Supplier Report");
+
+      const reportDenied = await exportReport(
+        db,
+        viewer,
+        "customers",
+        new URLSearchParams({ format: "csv" }),
+        context,
+        now,
+      );
+      expect(reportDenied.status).toBe(404);
+      const badGroup = await exportReport(
+        db,
+        accountant,
+        "sales",
+        new URLSearchParams({ format: "csv", groupBy: "unknown" }),
+        context,
+        now,
+      );
+      expect(badGroup.status).toBe(400);
+      expect(
+        await db.auditLog.findMany({
+          where: { requestId: context.requestId, action: "reports.export" },
+          orderBy: { id: "asc" },
+          select: { targetType: true, after: true },
+        }),
+      ).toEqual([
+        ...Array.from({ length: 5 }, () => ({
+          targetType: "sales_report",
+          after: { format: "csv", records: 1 },
+        })),
+        {
+          targetType: "customers_report",
+          after: { format: "csv", records: 1 },
+        },
+        {
+          targetType: "suppliers_report",
+          after: { format: "csv", records: 1 },
+        },
+        { targetType: "customer_report", after: { format: "csv", records: 2 } },
+        { targetType: "supplier_report", after: { format: "pdf", records: 1 } },
       ]);
     } finally {
       await db.$disconnect();

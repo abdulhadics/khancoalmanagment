@@ -20,7 +20,15 @@ import {
   readSalesDetailsPage,
   SalesFiltersError,
 } from "../../src/server/reporting/sales-details";
-import { readSalesSummary } from "../../src/server/reporting/sales-facts";
+import {
+  readMonthlySales,
+  readSalesSummary,
+} from "../../src/server/reporting/sales-facts";
+import {
+  readSalesReportExport,
+  readSalesReportPage,
+  salesReportGroups,
+} from "../../src/server/reporting/sales-report";
 
 const databaseUrl = process.env.INTEGRATION_DATABASE_URL;
 if (!databaseUrl)
@@ -286,6 +294,149 @@ describe("sales period and signed facts", () => {
     ).rejects.toBeInstanceOf(PermissionDenied);
     await expect(
       database.$transaction((tx) => readSalesDetailsExport(tx, viewer, {}, 25)),
+    ).rejects.toBeInstanceOf(PermissionDenied);
+  });
+});
+
+describe("grouped Sales Report", () => {
+  it("keeps the grand total constant across groups and month buckets after order reversals", async () => {
+    const owner = await actor("OWNER");
+    const first = await parties(owner.userId);
+    const second = await parties(owner.userId);
+    const year = "2011";
+    const firstOrder = await createOrders(database, owner, context(), {
+      key: randomUUID(),
+      businessDate: "2011-01-31",
+      rows: [
+        dispatch(first, "REPORT-001"),
+        {
+          ...dispatch(first, "REPORT-002", "1.000"),
+          purchaseRate: "0.00",
+          sellRate: "0.00",
+        },
+      ],
+    });
+    const secondOrder = await createOrders(database, owner, context(), {
+      key: randomUUID(),
+      businessDate: "2011-02-01",
+      rows: [dispatch(second, "REPORT-003", "25.000")],
+    });
+    const [orderId] = secondOrder.orderIds;
+    await voidOrders(database, owner, context(), {
+      key: randomUUID(),
+      reason: "Returned dispatch",
+      orders: [{ orderId, revisionNo: 1 }],
+    });
+    const viewer = await actor("VIEWER");
+    const filter = { year };
+    const canonical = await readSalesSummary(database, {
+      from: "2011-01-01",
+      to: "2011-12-31",
+    });
+    expect(canonical).toEqual({
+      trucks: 2,
+      weight: "11.005",
+      sales: "40.02",
+      purchases: "30.02",
+      profit: "10.00",
+    });
+
+    for (const groupBy of salesReportGroups) {
+      const report = await readSalesReportPage(database, viewer, {
+        ...filter,
+        groupBy,
+      });
+      expect(report.totals).toEqual(canonical);
+      expect(report.total).toBe(groupBy === "entry" ? 2 : 1);
+      if (groupBy === "entry") {
+        expect(report.rows.map((row) => row.key)).toEqual(
+          [...firstOrder.orderIds].reverse(),
+        );
+        expect(report.rows[0]).toMatchObject({
+          sales: "0.00",
+          purchases: "0.00",
+          trucks: 1,
+        });
+      }
+      if (groupBy === "customer") {
+        expect(report.rows).toMatchObject([
+          { key: first.customerId, ...canonical },
+        ]);
+      }
+    }
+
+    const monthly = await readMonthlySales(database, {
+      from: "2011-01-31",
+      to: "2011-02-01",
+    });
+    expect(monthly).toEqual([
+      { month: "2011-01", ...canonical },
+      {
+        month: "2011-02",
+        trucks: 0,
+        weight: "0.000",
+        sales: "0.00",
+        purchases: "0.00",
+        profit: "0.00",
+      },
+    ]);
+    const empty = await readSalesReportPage(database, viewer, {
+      ...filter,
+      customerId: second.customerId,
+      groupBy: "date",
+    });
+    expect(empty.rows).toEqual([]);
+    expect(empty.total).toBe(0);
+    expect(empty.totals.trucks).toBe(0);
+  });
+
+  it("uses the same group rows and exact totals for a filtered export and enforces export roles", async () => {
+    const accountant = await actor();
+    const first = await parties(accountant.userId);
+    const second = await parties(accountant.userId);
+    await createOrders(database, accountant, context(), {
+      key: randomUUID(),
+      businessDate: "2012-10-25",
+      rows: [
+        dispatch(first, "GROUP-001"),
+        dispatch(second, "GROUP-002", "37.125"),
+      ],
+    });
+    const filter = {
+      groupBy: "supplier",
+      year: "2012",
+      month: "10",
+      pageSize: "10",
+    };
+    const page = await readSalesReportPage(database, accountant, {
+      ...filter,
+      page: "99",
+    });
+    expect(page.page).toBe(1);
+    expect(page.total).toBe(2);
+    const exported = await database.$transaction((tx) =>
+      readSalesReportExport(tx, accountant, filter, 25),
+    );
+    expect(exported.rows).toEqual(page.rows);
+    expect(exported.totals).toEqual(page.totals);
+    const filtered = await readSalesReportPage(database, accountant, {
+      ...filter,
+      supplierId: second.supplierId,
+    });
+    expect(filtered.rows).toMatchObject([
+      {
+        key: second.supplierId,
+        weight: "37.125",
+        sales: "148.50",
+        purchases: "111.38",
+        profit: "37.12",
+      },
+    ]);
+    const viewer = await actor("VIEWER");
+    await expect(
+      database.$transaction((tx) =>
+        readSalesReportExport(tx, viewer, filter, 25),
+      ),
     ).rejects.toBeInstanceOf(PermissionDenied);
   });
 });

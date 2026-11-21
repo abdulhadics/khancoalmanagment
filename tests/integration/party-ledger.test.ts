@@ -1,4 +1,5 @@
 import { randomBytes, randomUUID } from "node:crypto";
+import { Decimal } from "decimal.js";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { parseBusinessDate } from "../../src/domain/business-date";
 import { createPayment } from "../../src/server/account/payments";
@@ -10,6 +11,11 @@ import {
   readPartyLedger,
 } from "../../src/server/details/party-ledger";
 import { createOrders } from "../../src/server/orders/create";
+import {
+  parsePartySummaryFilters,
+  parseSinglePartyReportFilters,
+  readPartySummaryReport,
+} from "../../src/server/reporting/party-summary";
 import { ReportPeriodError } from "../../src/server/reporting/period";
 
 const database = makePrisma(process.env.INTEGRATION_DATABASE_URL!);
@@ -148,6 +154,128 @@ beforeAll(async () => {
   await database.customer.update({
     where: { id: customerId },
     data: { isActive: false },
+  });
+});
+
+describe("party reports on PostgreSQL", () => {
+  it("reconciles both party reports to single ledgers and independent journal totals", async () => {
+    const audit = {
+      createdById: accountant.userId,
+      updatedById: accountant.userId,
+    };
+    const advance = await database.customer.create({
+      data: {
+        ...audit,
+        code: `LD-A-${label}`,
+        name: `Advance ${label}`,
+        nameKey: `advance ${label}`,
+      },
+      select: { id: true },
+    });
+    await database.customer.createMany({
+      data: Array.from({ length: 10 }, (_, index) => ({
+        ...audit,
+        code: `LD-X-${label}-${index}`,
+        name: `Zero ${label}-${index}`,
+        nameKey: `zero ${label}-${index}`,
+      })),
+    });
+    await database.ledgerEntry.create({
+      data: {
+        kind: "CUSTOMER_ADJUSTMENT",
+        customerId: advance.id,
+        businessDate: parseBusinessDate("2008-08-03"),
+        amount: "-25.11",
+        reason: "Unused party credit",
+        actorId: accountant.userId,
+      },
+    });
+    const filters = parsePartySummaryFilters({ ...period, q: label });
+    const report = await readPartySummaryReport(database, "customer", filters);
+    expect(report).toMatchObject({
+      page: 1,
+      lastPage: 2,
+      matchedCount: 12,
+      totals: {
+        openingBalance: "95.50",
+        billed: "40.02",
+        settled: "10.09",
+        adjustments: "-35.11",
+        activity: "-5.18",
+        closingBalance: "90.32",
+        pending: "115.43",
+        advance: "25.11",
+        trucks: 1,
+        weight: "10.005",
+      },
+    });
+    expect(report.rows).toHaveLength(10);
+    expect(report.rows.find(({ id }) => id === advance.id)).toMatchObject({
+      pending: "0.00",
+      closingBalance: "-25.11",
+    });
+    const next = await readPartySummaryReport(database, "customer", {
+      ...filters,
+      page: 2,
+    });
+    expect(next).toMatchObject({
+      matchedCount: 12,
+      totals: report.totals,
+      page: 2,
+    });
+    expect(next.rows).toHaveLength(2);
+    const exported = await readPartySummaryReport(
+      database,
+      "customer",
+      { ...filters, page: 2 },
+      30,
+    );
+    expect(exported).toMatchObject({
+      page: 1,
+      matchedCount: 12,
+      totals: report.totals,
+    });
+    expect(exported.rows).toHaveLength(12);
+
+    for (const [kind, id] of [
+      ["customer", customerId],
+      ["supplier", supplierId],
+    ] as const) {
+      const aggregate = await readPartySummaryReport(database, kind, filters);
+      const row = aggregate.rows.find((party) => party.id === id);
+      expect(row).toBeDefined();
+      if (!row) throw new Error("Expected party report row.");
+      const ledgerFilters = parseSinglePartyReportFilters({
+        ...period,
+        sort: undefined,
+        partyId: id,
+      });
+      expect(ledgerFilters.sort).toBe("date-asc");
+      const individual = await readPartyLedger(database, kind, ledgerFilters);
+      expect(individual?.summary).toMatchObject({
+        openingBalance: row.openingBalance,
+        billed: row.billed,
+        settled: row.settled,
+        adjustments: row.adjustments,
+        activity: row.activity,
+        closingBalance: row.closingBalance,
+      });
+      const total = await database.ledgerEntry.aggregate({
+        where: {
+          [kind === "customer" ? "customerId" : "supplierId"]: id,
+          businessDate: { lte: parseBusinessDate(period.to) },
+        },
+        _sum: { amount: true },
+      });
+      expect(row.closingBalance).toBe(total._sum.amount?.toFixed(2));
+      expect(
+        new Decimal(row.openingBalance)
+          .plus(row.billed)
+          .minus(row.settled)
+          .plus(row.adjustments)
+          .toFixed(2),
+      ).toBe(row.closingBalance);
+    }
   });
 });
 

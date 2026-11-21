@@ -1,0 +1,21 @@
+export const reportExport = {
+  groups: {
+    entry: "Order no.",
+    date: "Dispatch date",
+    customer: "Customer",
+    supplier: "Supplier",
+    mine: "Mine",
+  },
+  grouped: (group: string) => `Grouped by ${group}`,
+  trucks: "Trucks",
+  sales: "Sales",
+  purchases: "Purchases",
+  profit: "Net profit",
+  code: "Code",
+  openings: "Opening balance",
+  closings: { customer: "Closing receivable", supplier: "Closing payable" },
+  receipts: "Receipts",
+  payments: "Payments",
+  adjustments: "Adjustments",
+  grandTotal: "Grand total",
+} as const;

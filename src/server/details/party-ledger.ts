@@ -42,6 +42,7 @@ function queryValue(query: Query, name: string) {
 export function parsePartyLedgerFilters(
   query: Query,
   now = new Date(),
+  defaultSort: LedgerSort = "date-desc",
 ): PartyLedgerFilters {
   const get = (name: string) => queryValue(query, name)?.trim() || undefined;
   const requestedId = get("partyId");
@@ -67,11 +68,12 @@ export function parsePartyLedgerFilters(
     q,
     tab: rawTab === "orders" || rawTab === "payments" ? rawTab : "all",
     sort:
+      rawSort === "date-desc" ||
       rawSort === "date-asc" ||
       rawSort === "amount-desc" ||
       rawSort === "amount-asc"
         ? rawSort
-        : "date-desc",
+        : defaultSort,
     page: Number.isSafeInteger(page) && page > 0 ? page : 1,
     pageSize: ledgerPageSizes.find((size) => size === pageSize) ?? 20,
   };

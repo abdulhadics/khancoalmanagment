@@ -55,3 +55,9 @@ Use **Details** to open the sales list, customer ledger, or supplier ledger. The
 Select a customer or supplier to see its opening balance, movements in the selected period, running balance, and closing balance. Use **Orders** or **Payments** to focus the list. The running balance still includes earlier entries that the filter hides. Open an order or voucher from its ledger row to review the document.
 
 Use **CSV** or **PDF / Print** to export the filtered list across its pages. Narrow the date range when the export prompts you to reduce the result size.
+
+## Reports
+
+Open **Reports → Sales Report** for dispatch count, weight, sales, purchases, and profit. Filter by year, month, date range, customer, or supplier. Group rows by entry, date, customer, supplier, or mine. The summary covers the full filtered period as you move between pages or change grouping.
+
+Use **Customers Report** or **Suppliers Report** to see party balances. The closing balance combines the opening balance and the signed movements in the chosen period. Open a party's report for the individual entries that make up its balance. Choose **PDF / Print** or **CSV** to export the active filters for any of the five reports.

@@ -10,30 +10,23 @@ import { settings } from "@/i18n/messages/settings-en";
 import type { SessionActor } from "@/server/auth/session";
 import { csvDecimal, renderCsv } from "@/server/documents/csv";
 import {
+  exportFilteredDocument,
+  exportSubtitle,
+  FilteredExportError,
+  type ExportDocumentMetadata,
+  type FilteredExportDocument,
+} from "@/server/documents/filtered-export";
+import {
   renderTablePdf,
   type PdfTableColumn,
 } from "@/server/documents/pdf-table";
-import {
-  documentProfileFields,
-  readDocumentForPrint,
-  type DocumentProfile,
-  type PrintContext,
-} from "@/server/documents/print-data";
-import {
-  accessErrorResponse,
-  csvResponse,
-  pdfResponse,
-  printTextResponse,
-} from "@/server/documents/print-response";
-import {
-  ReportPeriodError,
-  type ReportPeriod,
-} from "@/server/reporting/period";
+import type { PrintContext } from "@/server/documents/print-data";
+import { printTextResponse } from "@/server/documents/print-response";
+import { ReportPeriodError } from "@/server/reporting/period";
 import {
   readSalesDetailsExport,
   SalesFiltersError,
 } from "@/server/reporting/sales-details";
-import { appendAuditEvent } from "@/server/repositories/audit-log";
 import {
   parsePartyLedgerFilters,
   readPartyLedger,
@@ -42,71 +35,8 @@ import {
 } from "./party-ledger";
 
 type DetailKind = "sales" | LedgerParty;
-type Format = "csv" | "pdf";
 type SalesData = Awaited<ReturnType<typeof readSalesDetailsExport>>;
 type LedgerData = NonNullable<Awaited<ReturnType<typeof readPartyLedger>>>;
-type ExportResult =
-  { kind: "sales"; data: SalesData } | { kind: LedgerParty; data: LedgerData };
-type Profile = {
-  profile: DocumentProfile;
-  generatedAt: Date;
-  preparedBy: string;
-};
-const fileLimits = { pdf: 1_000, csv: 10_000 } as const;
-
-class DetailsExportError extends Error {
-  constructor(
-    readonly message: string,
-    readonly status: number,
-  ) {
-    super(message);
-    this.name = "DetailsExportError";
-  }
-}
-
-function selectedQuery(params: URLSearchParams): {
-  format: Format;
-  filters: URLSearchParams;
-} {
-  const format = params.get("format");
-  if (format !== "csv" && format !== "pdf")
-    throw new DetailsExportError(copy.invalid, 400);
-  for (const [key, value] of params) {
-    if (params.getAll(key).length !== 1 || value.includes("\0")) {
-      throw new DetailsExportError(copy.invalid, 400);
-    }
-  }
-  const filters = new URLSearchParams(params);
-  filters.delete("format");
-  filters.delete("page");
-  filters.delete("pageSize");
-  return { format, filters };
-}
-
-function periodLabel(period: ReportPeriod, profile: DocumentProfile) {
-  const display = (date: string) =>
-    formatDocumentDate(parseBusinessDate(date), profile.dateFormat);
-  if (period.from && period.to)
-    return copy.range(display(period.from), display(period.to));
-  if (period.from) return copy.from(display(period.from));
-  if (period.to) return copy.through(display(period.to));
-  return copy.allDates;
-}
-
-function summaryLabel(
-  profile: DocumentProfile,
-  period: ReportPeriod,
-  count: number,
-  query: string,
-  extra: string[] = [],
-) {
-  return [
-    ...extra,
-    periodLabel(period, profile),
-    copy.resultCount(formatDecimal(BigInt(count), 0, profile.numberFormat)),
-    ...(query ? [copy.filter(query)] : []),
-  ].join("  |  ");
-}
 
 const salesHeader = [
   copy.orderNo,
@@ -159,7 +89,10 @@ function salesCsv(data: SalesData) {
   return renderCsv(salesHeader, rows);
 }
 
-export function renderSalesDetailsPdf(data: SalesData, metadata: Profile) {
+export function renderSalesDetailsPdf(
+  data: SalesData,
+  metadata: ExportDocumentMetadata,
+) {
   const { profile } = metadata;
   const decimal = (value: string, scale: 2 | 3 = 2) =>
     formatDecimal(value, scale, profile.numberFormat);
@@ -209,7 +142,7 @@ export function renderSalesDetailsPdf(data: SalesData, metadata: Profile) {
   return renderTablePdf({
     ...metadata,
     title: messages.nav.salesDetails,
-    subtitle: summaryLabel(
+    subtitle: exportSubtitle(
       profile,
       data.filters.period,
       data.total,
@@ -244,7 +177,7 @@ function statusLabel(row: PartyLedgerRow) {
   return row.isReversal ? copy.reversed(type) : type;
 }
 
-function ledgerCsv(data: LedgerData) {
+export function renderPartyLedgerCsv(data: LedgerData) {
   const { summary, party } = data;
   const rows = data.rows.map((row) => [
     row.businessDate,
@@ -321,14 +254,13 @@ function ledgerCsv(data: LedgerData) {
 export function renderPartyLedgerPdf(
   kind: LedgerParty,
   data: LedgerData,
-  metadata: Profile,
+  metadata: ExportDocumentMetadata,
+  title: string = kind === "customer"
+    ? messages.nav.customerDetails
+    : messages.nav.supplierDetails,
 ) {
   const { profile } = metadata;
   const { summary, party } = data;
-  const title =
-    kind === "customer"
-      ? messages.nav.customerDetails
-      : messages.nav.supplierDetails;
   const decimal = (value: string | null, scale: 2 | 3 = 2) =>
     value === null
       ? documentPrint.missing
@@ -362,7 +294,7 @@ export function renderPartyLedgerPdf(
   return renderTablePdf({
     ...metadata,
     title,
-    subtitle: summaryLabel(
+    subtitle: exportSubtitle(
       profile,
       data.filters.period,
       data.matchedCount,
@@ -432,7 +364,7 @@ async function readDetailsExport(
   filters: URLSearchParams,
   limit: number,
   now: Date,
-): Promise<ExportResult> {
+): Promise<FilteredExportDocument> {
   if (kind === "sales") {
     const data = await readSalesDetailsExport(
       tx,
@@ -440,7 +372,13 @@ async function readDetailsExport(
       Object.fromEntries(filters),
       limit,
     );
-    return { kind, data };
+    return {
+      count: data.total,
+      filename: "sales-details",
+      targetType: "sales_details",
+      csv: () => salesCsv(data),
+      pdf: (metadata) => renderSalesDetailsPdf(data, metadata),
+    };
   }
   const data = await readPartyLedger(
     tx,
@@ -448,34 +386,15 @@ async function readDetailsExport(
     parsePartyLedgerFilters(filters, now),
     limit,
   );
-  if (!data) throw new DetailsExportError(copy.missingParty, 404);
-  return { kind, data };
-}
-
-function matchingCount(result: ExportResult) {
-  return result.kind === "sales" ? result.data.total : result.data.matchedCount;
-}
-
-function exportResponse(
-  result: ExportResult,
-  metadata: Profile,
-  format: Format,
-): Response | Promise<Response> {
-  const filename =
-    result.kind === "sales"
-      ? "sales-details"
-      : `${result.kind}-ledger-${result.data.party.code}`;
-  if (format === "csv") {
-    return csvResponse(
-      result.kind === "sales" ? salesCsv(result.data) : ledgerCsv(result.data),
-      filename,
-    );
-  }
-  const pdf =
-    result.kind === "sales"
-      ? renderSalesDetailsPdf(result.data, metadata)
-      : renderPartyLedgerPdf(result.kind, result.data, metadata);
-  return pdf.then((bytes) => pdfResponse(bytes, filename));
+  if (!data) throw new FilteredExportError(copy.missingParty, 404);
+  return {
+    count: data.matchedCount,
+    filename: `${kind}-ledger-${data.party.code}`,
+    targetType: `${kind}_ledger`,
+    targetId: data.party.id,
+    csv: () => renderPartyLedgerCsv(data),
+    pdf: (metadata) => renderPartyLedgerPdf(kind, data, metadata),
+  };
 }
 
 export async function exportDetails(
@@ -487,58 +406,19 @@ export async function exportDetails(
   now = new Date(),
 ) {
   try {
-    const { format, filters } = selectedQuery(params);
-    const limit = fileLimits[format];
-    const { result, profile } = await readDocumentForPrint(
+    return await exportFilteredDocument(
       database,
       actor,
-      "reports.export",
+      params,
       context,
-      now,
-      async (tx) => {
-        const result = await readDetailsExport(
-          tx,
-          actor,
-          kind,
-          filters,
-          limit,
-          now,
-        );
-        const count = matchingCount(result);
-        if (count > limit)
-          throw new DetailsExportError(
-            copy.tooMany(formatDecimal(BigInt(limit), 0)),
-            422,
-          );
-        const current = await tx.companySettings.findUnique({
-          where: { id: 1 },
-          select: { documentProfile: { select: documentProfileFields } },
-        });
-        if (!current)
-          throw new DetailsExportError(documentPrint.unavailable, 404);
-        await appendAuditEvent(tx, {
-          ...context,
-          actor: { type: "USER", id: actor.userId },
-          area: "details",
-          action: "details.export",
-          targetType: kind === "sales" ? "sales_details" : `${kind}_ledger`,
-          targetId: result.kind === "sales" ? undefined : result.data.party.id,
-          outcome: "SUCCESS",
-          after: { format, records: count },
-        });
-        return { result, profile: current.documentProfile };
+      {
+        area: "details",
+        load: (tx, filters, limit, instant) =>
+          readDetailsExport(tx, actor, kind, filters, limit, instant),
       },
-    );
-    return exportResponse(
-      result,
-      { profile, generatedAt: now, preparedBy: actor.displayName },
-      format,
+      now,
     );
   } catch (error) {
-    const denied = accessErrorResponse(error);
-    if (denied) return denied;
-    if (error instanceof DetailsExportError)
-      return printTextResponse(error.message, error.status);
     if (
       error instanceof SalesFiltersError ||
       error instanceof ReportPeriodError

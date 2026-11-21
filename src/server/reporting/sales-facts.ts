@@ -16,6 +16,14 @@ export type SalesTotals = {
   profit: string;
 };
 
+export const summedSalesMeasures = Prisma.sql`
+  COALESCE(SUM(trucks), 0)::bigint AS trucks,
+  COALESCE(SUM(weight), 0)::text AS weight,
+  COALESCE(SUM(sales), 0)::text AS sales,
+  COALESCE(SUM(purchases), 0)::text AS purchases,
+  COALESCE(SUM(sales) - SUM(purchases), 0)::text AS profit
+`;
+
 // Both sides contribute their own signed posted amount. Count each dispatch
 // and its weight once, from the sales side, including zero-rated dispatches.
 export function signedSalesFacts(filter: SalesFactFilter = {}) {
@@ -67,13 +75,25 @@ export async function readSalesSummary(
   const [total] = await tx.$queryRaw<
     (Omit<SalesTotals, "trucks"> & { trucks: bigint })[]
   >`
-    SELECT COALESCE(SUM(trucks), 0)::bigint AS trucks,
-      COALESCE(SUM(weight), 0)::text AS weight,
-      COALESCE(SUM(sales), 0)::text AS sales,
-      COALESCE(SUM(purchases), 0)::text AS purchases,
-      COALESCE(SUM(sales) - SUM(purchases), 0)::text AS profit
+    SELECT ${summedSalesMeasures}
     FROM (${signedSalesFacts(filter)}) AS facts
   `;
   if (!total) throw new Error("Sales aggregation returned no result.");
   return { ...total, trucks: Number(total.trucks) };
+}
+
+export async function readMonthlySales(
+  tx: Prisma.TransactionClient,
+  filter: SalesFactFilter,
+) {
+  const rows = await tx.$queryRaw<
+    (Omit<SalesTotals, "trucks"> & { month: string; trucks: bigint })[]
+  >`
+    SELECT to_char(date_trunc('month', business_date), 'YYYY-MM') AS month,
+      ${summedSalesMeasures}
+    FROM (${signedSalesFacts(filter)}) AS facts
+    GROUP BY date_trunc('month', business_date)
+    ORDER BY month
+  `;
+  return rows.map((row) => ({ ...row, trucks: Number(row.trucks) }));
 }

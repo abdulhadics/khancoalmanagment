@@ -2,11 +2,13 @@ import { FileDown, Printer, Search } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { ReportPeriodFields } from "@/components/workspace/report-period-fields";
 import { parseBusinessDate } from "@/domain/business-date";
 import { formatDocumentDate } from "@/domain/document-format";
 import { formatCurrency, formatDecimal } from "@/domain/number-display";
 import { can } from "@/domain/permissions";
 import { ledgerMessages as t } from "@/i18n/messages/ledger-en";
+import { partyReports } from "@/i18n/messages/party-reports-en";
 import { requireActor } from "@/server/auth/request-context";
 import { getDatabase } from "@/server/db/client";
 import {
@@ -20,6 +22,7 @@ import {
   type PartyLedgerFilters,
 } from "@/server/details/party-ledger";
 import { ReportPeriodError } from "@/server/reporting/period";
+import { parseSinglePartyReportFilters } from "@/server/reporting/party-summary";
 
 type Query = Record<string, string | string[] | undefined>;
 type Ledger = NonNullable<Awaited<ReturnType<typeof readPartyLedger>>>;
@@ -119,39 +122,7 @@ function FilterBar({
         </div>
       </div>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 2xl:grid-cols-[repeat(4,minmax(0,1fr))_minmax(9rem,1.4fr)_6rem]">
-        <LedgerInput
-          id="year"
-          label={t.year}
-          value={filters.year}
-          type="number"
-          min={1000}
-          max={9999}
-        />
-        <div className="grid min-w-0 gap-1.5">
-          <label htmlFor="ledger-month" className="text-sm font-semibold">
-            {t.month}
-          </label>
-          <select
-            id="ledger-month"
-            name="month"
-            defaultValue={filters.month ? String(Number(filters.month)) : ""}
-            className={fieldClass}
-          >
-            <option value="">{t.allMonths}</option>
-            {t.months.map((month, index) => (
-              <option key={month} value={index + 1}>
-                {month}
-              </option>
-            ))}
-          </select>
-        </div>
-        <LedgerInput
-          id="from"
-          label={t.from}
-          type="date"
-          value={filters.from}
-        />
-        <LedgerInput id="to" label={t.to} type="date" value={filters.to} />
+        <ReportPeriodFields prefix="ledger" fields={filters} />
         <div className="grid min-w-0 gap-1.5">
           <label htmlFor="ledger-sort" className="text-sm font-semibold">
             {t.sort}
@@ -205,41 +176,14 @@ function FilterBar({
   );
 }
 
-function LedgerInput({
-  id,
-  label,
-  value,
-  ...attributes
-}: {
-  id: string;
-  label: string;
-  value?: string;
-  type: string;
-  min?: number;
-  max?: number;
-}) {
-  return (
-    <div className="grid min-w-0 gap-1.5">
-      <label htmlFor={`ledger-${id}`} className="text-sm font-semibold">
-        {label}
-      </label>
-      <input
-        {...attributes}
-        id={`ledger-${id}`}
-        name={id}
-        defaultValue={value ?? ""}
-        className={`${fieldClass} w-full min-w-0`}
-      />
-    </div>
-  );
-}
-
 function LedgerSummary({
   ledger,
   kind,
+  report,
 }: {
   ledger: Ledger;
   kind: LedgerParty;
+  report: boolean;
 }) {
   const { summary, preferences } = ledger;
   const labels = t.parties[kind];
@@ -264,8 +208,9 @@ function LedgerSummary({
   const balances: Array<{ label: string; value: string }> = [
     { label: t.open, value: money(summary.openingBalance) },
     { label: t.movement, value: money(summary.activity) },
-    { label: t.close, value: money(summary.closingBalance) },
   ];
+  if (!report)
+    balances.push({ label: t.close, value: money(summary.closingBalance) });
   if (summary.adjustments !== "0.00")
     balances.push({ label: t.adjustments, value: money(summary.adjustments) });
   if (summary.advance !== "0.00")
@@ -273,6 +218,14 @@ function LedgerSummary({
 
   return (
     <div className="grid gap-3">
+      {report && (
+        <div className="@container min-w-0 rounded-[var(--radius)] bg-[var(--sidebar)] px-5 py-4 text-[var(--sidebar-foreground)]">
+          <p className="text-sm font-semibold">{partyReports[kind].due}</p>
+          <p className="mt-1 font-semibold tracking-tight whitespace-nowrap tabular-nums text-[min(6cqi,1.6rem)]">
+            {money(summary.pending)}
+          </p>
+        </div>
+      )}
       <dl className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-5">
         {rows.map(({ label, value }) => (
           <div
@@ -304,7 +257,15 @@ function LedgerSummary({
   );
 }
 
-function LedgerTable({ ledger, kind }: { ledger: Ledger; kind: LedgerParty }) {
+function LedgerTable({
+  ledger,
+  kind,
+  showActions,
+}: {
+  ledger: Ledger;
+  kind: LedgerParty;
+  showActions: boolean;
+}) {
   const { rows, preferences } = ledger;
   const labels = t.parties[kind];
   const money = (value: string) => formatCurrency(value, preferences);
@@ -321,7 +282,7 @@ function LedgerTable({ ledger, kind }: { ledger: Ledger; kind: LedgerParty }) {
     labels.debit,
     labels.credit,
     t.balance,
-    t.actions,
+    ...(showActions ? [t.actions] : []),
   ];
   return (
     <div
@@ -390,24 +351,26 @@ function LedgerTable({ ledger, kind }: { ledger: Ledger; kind: LedgerParty }) {
               <td className={`${numberCell} font-semibold`}>
                 {money(row.balance)}
               </td>
-              <td className="px-3 py-3 text-end">
-                {row.canPrintOrder && row.orderId && (
-                  <a
-                    className="font-semibold text-primary hover:underline"
-                    href={`/orders/${row.orderId}/slip`}
-                  >
-                    {t.slip}
-                  </a>
-                )}
-                {row.paymentId && (
-                  <a
-                    className="font-semibold text-primary hover:underline"
-                    href={`/account/vouchers/${row.paymentId}`}
-                  >
-                    {t.voucher}
-                  </a>
-                )}
-              </td>
+              {showActions && (
+                <td className="px-3 py-3 text-end">
+                  {row.canPrintOrder && row.orderId && (
+                    <a
+                      className="font-semibold text-primary hover:underline"
+                      href={`/orders/${row.orderId}/slip`}
+                    >
+                      {t.slip}
+                    </a>
+                  )}
+                  {row.paymentId && (
+                    <a
+                      className="font-semibold text-primary hover:underline"
+                      href={`/account/vouchers/${row.paymentId}`}
+                    >
+                      {t.voucher}
+                    </a>
+                  )}
+                </td>
+              )}
             </tr>
           ))}
         </tbody>
@@ -419,22 +382,29 @@ function LedgerTable({ ledger, kind }: { ledger: Ledger; kind: LedgerParty }) {
 export async function PartyLedgerView({
   kind,
   query,
+  mode = "details",
 }: {
   kind: LedgerParty;
   query: Query;
+  mode?: "details" | "report";
 }) {
   const actor = await requireActor();
-  if (!can(actor.roleCode, "details.view")) notFound();
-  const path = `/details/${kind}s`;
+  const report = mode === "report";
+  if (!can(actor.roleCode, report ? "reports.view" : "details.view"))
+    notFound();
+  const path = report ? `/reports/${kind}` : `/details/${kind}s`;
   const labels = t.parties[kind];
+  const parseFilters = report
+    ? parseSinglePartyReportFilters
+    : parsePartyLedgerFilters;
   let filters: PartyLedgerFilters;
   let invalidPeriod = false;
   try {
-    filters = parsePartyLedgerFilters(query);
+    filters = parseFilters(query);
   } catch (error) {
     if (!(error instanceof ReportPeriodError)) throw error;
     invalidPeriod = true;
-    filters = parsePartyLedgerFilters({
+    filters = parseFilters({
       ...query,
       year: undefined,
       month: undefined,
@@ -459,7 +429,7 @@ export async function PartyLedgerView({
   return (
     <>
       <header className="page-heading flex flex-wrap items-end justify-between gap-3">
-        <h1>{labels.title}</h1>
+        <h1>{report ? partyReports[kind].single : labels.title}</h1>
         {ledger && exportsAllowed && (
           <div className="flex flex-wrap gap-2">
             <Button asChild variant="outline">
@@ -497,7 +467,7 @@ export async function PartyLedgerView({
           </p>
         ) : (
           <>
-            <LedgerSummary ledger={ledger} kind={kind} />
+            <LedgerSummary ledger={ledger} kind={kind} report={report} />
             <nav aria-label={t.activityTabs} className="flex flex-wrap gap-2">
               {tabs.map(([tab, label]) => (
                 <Button
@@ -515,7 +485,11 @@ export async function PartyLedgerView({
               ))}
             </nav>
             {ledger.rows.length > 0 ? (
-              <LedgerTable ledger={ledger} kind={kind} />
+              <LedgerTable
+                ledger={ledger}
+                kind={kind}
+                showActions={can(actor.roleCode, "details.view")}
+              />
             ) : (
               <p className="rounded-[var(--radius)] border border-border bg-card p-5 text-muted-foreground">
                 {t.noEntries}

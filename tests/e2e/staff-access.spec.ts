@@ -205,6 +205,9 @@ test("Owner adds dispatch parties in place and posts an exact-priced truck", asy
   await expect(
     page.getByRole("combobox", { name: "Customer 1" }),
   ).not.toHaveValue("");
+  const dispatchCustomer = await page
+    .getByRole("combobox", { name: "Customer 1" })
+    .inputValue();
 
   await page.getByRole("button", { name: "Add supplier", exact: true }).click();
   const supplier = page.getByRole("dialog", { name: "Add supplier" });
@@ -241,6 +244,15 @@ test("Owner adds dispatch parties in place and posts an exact-priced truck", asy
   await expect(page.getByRole("row", { name: /KCS-900/ })).toContainText(
     /20\.01/,
   );
+  await page.goto(
+    `/reports/sales?groupBy=customer&customerId=${dispatchCustomer}`,
+  );
+  await expect(
+    page.getByRole("heading", { name: "Sales Report", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("row", { name: /Dispatch Test Foundry/ }),
+  ).toContainText(/20\.01/);
   await page.goto("/orders");
   await order.getByRole("link", { name: "Edit", exact: true }).click();
   await page
@@ -378,4 +390,33 @@ test("Owner records a quick receipt and a supplier payment with voucher PDFs", a
     page.getByRole("heading", { name: /^Suppliers? Details$/ }),
   ).toBeVisible();
   await expect(page.getByText(/600\.00/).first()).toBeVisible();
+
+  for (const [path, heading, total] of [
+    [
+      "/reports/customers?q=Payment+Test+Customer",
+      "Customers Report",
+      /874\.75/,
+    ],
+    [
+      `/reports/customer?partyId=${customerId}`,
+      "Single Customer Report",
+      /874\.75/,
+    ],
+    [
+      "/reports/suppliers?q=Payment+Test+Supplier",
+      "Suppliers Report",
+      /600\.00/,
+    ],
+    [
+      `/reports/supplier?partyId=${supplierId}`,
+      "Single Supplier Report",
+      /600\.00/,
+    ],
+  ] as const) {
+    await page.goto(path);
+    await expect(
+      page.getByRole("heading", { name: heading, exact: true }),
+    ).toBeVisible();
+    await expect(page.getByText(total).first()).toBeVisible();
+  }
 });

@@ -15,6 +15,7 @@ This record maps the functional specification to implementation and verification
 | 3.5 and 3.10 | Customer receipts, supplier payments, dated previews, and Quick Receive | `src/server/account/payments.ts`, `workspace.ts`, `src/app/(workspace)/account`, `src/components/workspace/quick-receive.tsx` | `tests/integration/payment-writes.test.ts`, `tests/integration/account-workspace.test.ts`, payment Edge workflow |
 | 3.5 | Advance confirmation, cheque lifecycle, voids, and printable vouchers | `src/server/account/payments.ts`, `voucher.ts`, and `voucher-pdf.ts`, `src/server/repositories/cash-movement.ts` | `tests/integration/payment-writes.test.ts`, `tests/integration/voucher-print.test.ts`, `tests/unit/voucher-pdf.test.ts`, Poppler render checks |
 | 3.4 and 6 | Sales Details and both signed party ledgers, filtered running balances, bulk void, and authorized PDF and CSV exports | `src/server/reporting/sales-details.ts`, `src/server/details/party-ledger.ts`, `exports.ts`, `src/server/documents/csv.ts`, `pdf-table.ts` | `tests/integration/sales-details.test.ts`, `party-ledger.test.ts`, `details-export.test.ts`, `tests/unit/details-export.test.ts` |
+| 3.6 | Sales report with five groupings, aggregate and single-party reports, and filtered PDF and CSV exports | `src/app/(workspace)/reports`, `src/server/reporting/sales-report.ts`, `party-summary.ts`, `reconciliation.ts`, `exports.ts` | `tests/integration/sales-details.test.ts`, `party-ledger.test.ts`, `details-export.test.ts`, `accounting-integrity.test.ts`, `tests/unit/report-export.test.ts`, reports Edge workflow |
 | 3.7 and 3.8 | Customer and supplier records, inactive history, and multiple mines | `src/server/customers.ts`, `src/server/parties/suppliers.ts`, and the customer and supplier routes | `tests/integration/customers.test.ts`, `tests/integration/suppliers.test.ts`, company settings Edge workflow |
 | 3.9 | Company information, logo, financial display, document numbering, and bank accounts | `src/server/settings/company.ts`, `logo.ts`, `src/app/(workspace)/settings` | `tests/unit/company-settings.test.ts`, `tests/integration/company-settings.test.ts`, company settings Edge workflow |
 | 4 and 5 | Exact snapshots, transactional retries, history protection, and period gate | `prisma/schema.prisma`, `prisma/migrations`, `src/server/repositories/idempotency.ts`, `periods.ts`, `audit-log.ts` | `tests/integration/transaction-repositories.test.ts`, `tests/integration/period-locks.test.ts`, order and payment integration suites |
@@ -24,7 +25,6 @@ This record maps the functional specification to implementation and verification
 
 | Milestone | Required evidence |
 | --- | --- |
-| M7 | Five reports, date and party reconciliation, and filtered exports |
 | M8 | Dashboard KPI and activity reconciliation against the shared report queries |
 | M9 | Owner controls, file encryption, retention, backup alerting, and restore verification |
 | M10 | Windows Server deployment rehearsal, production TLS and email, large-data benchmarks, accessibility, and final security assessment |
