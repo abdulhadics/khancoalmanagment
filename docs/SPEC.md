@@ -140,5 +140,6 @@ The Owner administers the application and its data. The Accountant handles order
 | Preserve the last active Owner and require elevated checks for sensitive changes | Maintains an administrative recovery path. |
 | Use payload fingerprints and server-issued authorization checks for document downloads | Associates a retry with the correct operation and prevents direct export links from bypassing role restrictions. |
 | Keep company-configured weight-unit labels separate from saved weight values | Preserves historical calculations if a display preference changes. Any physical conversion requires an explicit migration decision. |
+| Bound each Details export to 1,000 PDF rows or 10,000 CSV rows | Keeps one request from exhausting the Windows app process. Over-limit requests identify the need for a narrower filter. |
 
 Native mobile apps, multitenancy, payroll, yard inventory, external accounting integrations, and SMS or WhatsApp gateways are outside this release scope. Windows hosting credentials, reset email delivery settings, live-data migration approval, business copy, and human translation approval are rollout inputs. Development uses purpose-built test fixtures.

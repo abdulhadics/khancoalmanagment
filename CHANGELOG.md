@@ -8,3 +8,4 @@
 - Added customer and supplier records, supplier mines, dated opening balances, company document settings, and bank and cash account management.
 - Added bulk truck dispatches, live pricing previews, scoped posting and corrections, date registers, and printable dispatch slips.
 - Added customer receipts, supplier payments, real-time dated balance previews, bank and cash vouchers, and audited cheque and reversal workflows.
+- Added Sales Details, customer and supplier ledgers, running balances, and filtered PDF and CSV exports.

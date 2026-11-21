@@ -4,6 +4,7 @@ export const account = {
     "Record customer receipts and supplier payments, then reconcile cash and party balances.",
   receipt: "Customer receipt",
   payment: "Supplier payment",
+  ledger: "Ledger",
   receive: "Receive",
   pay: "Pay",
   quickReceive: "Quick receive",

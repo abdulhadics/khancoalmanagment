@@ -47,3 +47,11 @@ Open **Account** to record a customer receipt or supplier payment. Use **Quick r
 Review the amount before saving. If it exceeds the outstanding balance, confirm the advance. Open the new voucher PDF to print the receipt or payment. The customer and supplier tables show the balances after posting.
 
 Use **Account transactions** to find vouchers by party, reference, date, method, or status. The account shows cheques in cash totals at issuance and lists the uncleared amounts separately. Mark a cheque deposited before marking it cleared or bounced. Enter the effective date and a reason for a bounce. The ledger reverses the cheque on that date. An Owner can void a voucher with a reason. The original voucher and reversal remain available for review.
+
+## Sales and ledgers
+
+Use **Details** to open the sales list, customer ledger, or supplier ledger. The sales list shows orders and totals for the date range and party filters you choose. The Owner can select rows on the visible page and void them together after entering a reason.
+
+Select a customer or supplier to see its opening balance, movements in the selected period, running balance, and closing balance. Use **Orders** or **Payments** to focus the list. The running balance still includes earlier entries that the filter hides. Open an order or voucher from its ledger row to review the document.
+
+Use **CSV** or **PDF / Print** to export the filtered list across its pages. Narrow the date range when the export prompts you to reduce the result size.

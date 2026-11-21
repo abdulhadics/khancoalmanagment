@@ -1,0 +1,31 @@
+# Requirements traceability
+
+This record maps the functional specification to implementation and verification. The release evidence is updated as each milestone passes.
+
+| Brief | Requirement | Implementation | Verification |
+| --- | --- | --- | --- |
+| 1 and 7 | Windows-native workspace, English catalog, responsive navigation, and company formatting | `scripts/serve.ts`, `src/app/globals.css`, `src/components/workspace`, `src/i18n`, `src/domain/business-date.ts`, `src/domain/number-display.ts` | `tests/unit/config.test.ts`, `tests/unit/business-date.test.ts`, `tests/unit/number-display.test.ts`, Windows Edge workflows |
+| 3.1 | Secure first Owner bootstrap and first-use password change | `scripts/seed-owner.ts`, `src/server/auth/seed-first-owner.ts`, `src/server/auth/challenge-flows.ts`, `src/app/(auth)/login/change-password` | `tests/integration/owner-bootstrap.test.ts`, `tests/integration/auth-challenge-flows.test.ts`, staff access Edge workflow |
+| 3.1 and 6 | Sign-in, expiry, throttling, secure cookies, and revocation | `src/server/auth/login.ts`, `session.ts`, `cookies.ts`, and `throttle.ts` | `tests/integration/login-session.test.ts`, `tests/unit/config.test.ts`, staff access Edge workflow |
+| 3.1 and 6 | Password recovery and production Owner TOTP | `src/server/auth/recovery.ts`, `totp.ts`, and `challenge-flows.ts` | `tests/unit/totp.test.ts`, `tests/integration/auth-challenge-flows.test.ts`. SMTP tests use a simulated sender. |
+| 3.1 and 6 | Role checks, staff management, and scoped financial fields | `src/domain/permissions.ts`, `src/server/auth/staff.ts`, `live-principal.ts`, `src/app/(workspace)/settings/users` | `tests/unit/permissions.test.ts`, `tests/integration/staff-management.test.ts`, staff access Edge workflow |
+| 3.3 | Bulk truck input, exact pricing, duplicates, and sequential order numbers | `src/app/(workspace)/orders/order-grid.tsx`, `src/server/orders/create.ts`, `src/domain/money.ts`, `src/server/repositories/number-sequences.ts` | `tests/unit/money.test.ts`, `tests/integration/order-create.test.ts`, dispatch Edge workflow |
+| 3.3 and 4 | Pending pricing, posting, revisions, reversals, and soft deletion | `src/server/orders/mutations.ts`, `postings.ts`, and `reversals.ts`, `src/app/(workspace)/orders/[id]/edit` | `tests/integration/order-mutations.test.ts`, dispatch edit and void Edge workflow |
+| 3.3 and 7 | Issued dispatch slip and selected-date register PDF | `src/server/orders/print.ts`, `dispatch-pdf.ts`, and the order print routes | `tests/unit/dispatch-pdf.test.ts`, `tests/integration/dispatch-print.test.ts`, Edge PDF download and Poppler render checks |
+| 3.5 and 3.10 | Customer receipts, supplier payments, dated previews, and Quick Receive | `src/server/account/payments.ts`, `workspace.ts`, `src/app/(workspace)/account`, `src/components/workspace/quick-receive.tsx` | `tests/integration/payment-writes.test.ts`, `tests/integration/account-workspace.test.ts`, payment Edge workflow |
+| 3.5 | Advance confirmation, cheque lifecycle, voids, and printable vouchers | `src/server/account/payments.ts`, `voucher.ts`, and `voucher-pdf.ts`, `src/server/repositories/cash-movement.ts` | `tests/integration/payment-writes.test.ts`, `tests/integration/voucher-print.test.ts`, `tests/unit/voucher-pdf.test.ts`, Poppler render checks |
+| 3.4 and 6 | Sales Details and both signed party ledgers, filtered running balances, bulk void, and authorized PDF and CSV exports | `src/server/reporting/sales-details.ts`, `src/server/details/party-ledger.ts`, `exports.ts`, `src/server/documents/csv.ts`, `pdf-table.ts` | `tests/integration/sales-details.test.ts`, `party-ledger.test.ts`, `details-export.test.ts`, `tests/unit/details-export.test.ts` |
+| 3.7 and 3.8 | Customer and supplier records, inactive history, and multiple mines | `src/server/customers.ts`, `src/server/parties/suppliers.ts`, and the customer and supplier routes | `tests/integration/customers.test.ts`, `tests/integration/suppliers.test.ts`, company settings Edge workflow |
+| 3.9 | Company information, logo, financial display, document numbering, and bank accounts | `src/server/settings/company.ts`, `logo.ts`, `src/app/(workspace)/settings` | `tests/unit/company-settings.test.ts`, `tests/integration/company-settings.test.ts`, company settings Edge workflow |
+| 4 and 5 | Exact snapshots, transactional retries, history protection, and period gate | `prisma/schema.prisma`, `prisma/migrations`, `src/server/repositories/idempotency.ts`, `periods.ts`, `audit-log.ts` | `tests/integration/transaction-repositories.test.ts`, `tests/integration/period-locks.test.ts`, order and payment integration suites |
+| 6 and 8 | Runtime configuration, browser headers, restricted PostgreSQL profile, and native CI | `src/proxy.ts`, `src/server/config/env.ts`, `scripts/grant-database-access.sql`, `.github/workflows/ci.yml` | Configuration tests, checked database grants, local Windows builds and tests. The workflow configures clean Windows runner checks. |
+
+## Remaining release evidence
+
+| Milestone | Required evidence |
+| --- | --- |
+| M7 | Five reports, date and party reconciliation, and filtered exports |
+| M8 | Dashboard KPI and activity reconciliation against the shared report queries |
+| M9 | Owner controls, file encryption, retention, backup alerting, and restore verification |
+| M10 | Windows Server deployment rehearsal, production TLS and email, large-data benchmarks, accessibility, and final security assessment |
+| M11 | Urdu and Pashto, right-to-left browsing, bilingual printing, and native-speaker review |

@@ -81,3 +81,13 @@ These records capture the choices used for the planning baseline. Amend the corr
 **Decision.** Use Argon2id hashes, opaque session cookies, persisted session digests, PostgreSQL rate limits, short-lived reset challenges, and TOTP. Protect documents and CSVs through the same data-scope rules as their interactive views. PDFs run in the native Node service. CSV sanitization treats user-entered labels and references as text.
 
 **Consequences.** The application depends on database availability for each protected request. Account disablement and permission changes take effect when the live database denies the session. Owners enroll TOTP before gaining full production access. Integration tests must cover cookie security, direct access to exports and object IDs, and field-level disclosure by role.
+
+## ADR 009 Export size and data representation
+
+**Context.** Staff can export document views from the same Windows app process that handles dispatch and account writes. The order database can grow beyond the size of a practical printed register.
+
+**Options.** Generate the full result in memory, stream unbounded exports, or bound each request and prompt staff to refine its filters.
+
+**Decision.** Bound Details exports to 1,000 PDF rows and 10,000 CSV rows. Return a filter-refinement error when more rows match. Exports reuse the screen filters across all matching pages and keep exact totals. CSV uses UTF-8, ISO business dates, exact decimals, and formula safeguards for text cells. PDF uses the company date and number formatting.
+
+**Consequences.** Staff can export larger histories in date ranges. The app can validate row count before allocating the complete PDF or CSV, and the resulting document represents the full accepted range.

@@ -6,10 +6,11 @@ const origin = "http://127.0.0.1:3147";
 export default defineConfig({
   testDir: "./tests/e2e",
   workers: 1,
+  timeout: 60_000,
+  globalTimeout: 420_000,
   use: {
     baseURL: origin,
     channel: process.env.PLAYWRIGHT_CHROMIUM_CHANNEL ?? "msedge",
-    trace: "retain-on-failure",
   },
   webServer: {
     command: "npm run start",

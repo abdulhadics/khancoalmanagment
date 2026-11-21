@@ -158,6 +158,11 @@ describe("idempotent commands", () => {
   it("releases the claim and number reservation on failure", async () => {
     const input = commandInput({ vehicle: "TEST-123" });
     const scope = 2043;
+    const counter = await database.numberSequence.findUnique({
+      where: { kind_scope: { kind: "ORDER", scope } },
+      select: { nextOrdinal: true },
+    });
+    const initialOrdinal = counter?.nextOrdinal ?? 1n;
     await expect(
       runIdempotentCommand(database, input, async (tx) => {
         await reserveNumberBlock(tx, "ORDER", scope, 1);
@@ -169,7 +174,7 @@ describe("idempotent commands", () => {
       const { firstOrdinal } = await reserveNumberBlock(tx, "ORDER", scope, 1);
       return { resourceIds: [String(firstOrdinal)] };
     });
-    expect(retried.resourceIds).toEqual(["1"]);
+    expect(retried.resourceIds).toEqual([String(initialOrdinal)]);
   });
 });
 

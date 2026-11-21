@@ -2,18 +2,19 @@ import { formatDocumentDate } from "@/domain/document-format";
 import { formatDecimal } from "@/domain/number-display";
 import { dispatchPrint as copy } from "@/i18n/messages/dispatch-print-en";
 import {
-  documentBottom,
   documentInk,
   documentInset,
   documentMutedInk,
   documentRule,
-  documentTint,
   documentWidth,
   drawDocumentField,
   printableText,
   renderPdf,
-  type PdfDocument,
 } from "@/server/documents/pdf";
+import {
+  renderTablePdf,
+  type PdfTableColumn,
+} from "@/server/documents/pdf-table";
 import type {
   DailyPrintData,
   DispatchSummaryRow,
@@ -105,19 +106,9 @@ export function renderDispatchSlip(data: SlipPrintData) {
   );
 }
 
-type Column = {
-  label: string;
-  weight: number;
-  number?: boolean;
-  singleLine?: boolean;
-};
-type TableColumn = Column & { x: number; width: number };
-const cellPad = 5;
-const bodySize = 8.5;
-
-function dailyColumns(data: DailyPrintData): Column[] {
+function dailyColumns(data: DailyPrintData): PdfTableColumn[] {
   const { currencySymbol, weightUnit } = data.profile;
-  const operational: Column[] = [
+  const operational: PdfTableColumn[] = [
     { label: copy.order, weight: 1.16, singleLine: true },
     { label: copy.customer, weight: 1.55 },
     { label: copy.supplier, weight: 1.55 },
@@ -140,83 +131,6 @@ function dailyColumns(data: DailyPrintData): Column[] {
         })),
       ]
     : operational;
-}
-
-function positions(columns: Column[], width: number): TableColumn[] {
-  const sum = columns.reduce((total, column) => total + column.weight, 0);
-  let x = documentInset;
-  return columns.map((column) => {
-    const size = (column.weight / sum) * width;
-    const positioned = { ...column, x, width: size };
-    x += size;
-    return positioned;
-  });
-}
-
-function rowHeights(
-  doc: PdfDocument,
-  columns: TableColumn[],
-  cells: string[],
-  header: boolean,
-) {
-  return cells.map((value, index) => {
-    const col = columns[index];
-    const width = col.width - 2 * cellPad;
-    const singleLine = !header && (col.number || col.singleLine);
-    doc.fontSize(bodySize);
-    const cellSize = singleLine
-      ? Math.min(
-          bodySize,
-          (bodySize * (width - 0.5)) / Math.max(1, doc.widthOfString(value)),
-        )
-      : bodySize;
-    doc.fontSize(cellSize);
-    const height = singleLine
-      ? bodySize + 2
-      : doc.heightOfString(value, { width, lineGap: 1 });
-    return {
-      value,
-      column: col,
-      width,
-      height,
-      fontSize: cellSize,
-      singleLine,
-    };
-  });
-}
-
-function tableRow(
-  doc: PdfDocument,
-  columns: TableColumn[],
-  cells: string[],
-  y: number,
-  { header = false, shaded = false, measureOnly = false } = {},
-) {
-  const measured = rowHeights(doc, columns, cells, header);
-  const height =
-    Math.max(12, ...measured.map((cell) => cell.height)) + cellPad * 2;
-  if (measureOnly) return height;
-  if (header || shaded) {
-    doc.rect(documentInset, y, documentWidth(doc), height).fill(documentTint);
-  }
-  for (const cell of measured) {
-    doc
-      .fontSize(cell.fontSize)
-      .fillColor(header ? documentMutedInk : documentInk);
-    doc.text(cell.value, cell.column.x + cellPad, y + cellPad, {
-      width: cell.width,
-      height: cell.height,
-      align: cell.column.number ? "right" : "left",
-      lineGap: 1,
-    });
-  }
-  doc
-    .lineWidth(0.35)
-    .strokeColor(documentRule)
-    .moveTo(documentInset, y + height)
-    .lineTo(documentInset + documentWidth(doc), y + height)
-    .stroke();
-  return height;
 }
 
 function dailyCells(row: DispatchSummaryRow, data: DailyPrintData): string[] {
@@ -261,50 +175,17 @@ function dailyTotals(data: DailyPrintData): string[] {
 }
 
 export function renderDailyDispatch(data: DailyPrintData) {
-  return renderPdf({ ...data, layout: "landscape", title: copy.day }, (doc) => {
-    const width = documentWidth(doc);
-    const columns = positions(dailyColumns(data), width);
-    const headings = columns.map((column) => printableText(column.label));
-    const date = formatDocumentDate(data.date, data.profile.dateFormat);
-    const count = copy.entryCount(
-      formatDecimal(BigInt(data.rows.length), 0, data.profile.numberFormat),
-    );
-
-    function pageHeader() {
-      doc
-        .font("Inter Semibold")
-        .fillColor(documentInk)
-        .fontSize(20)
-        .text(copy.day, documentInset, doc.y, { width });
-      doc
-        .font("Inter")
-        .fillColor(documentMutedInk)
-        .fontSize(9)
-        .text(`${date}  |  ${count}`, documentInset, doc.y + 5, { width });
-      const top = doc.y + 12;
-      return top + tableRow(doc, columns, headings, top, { header: true });
-    }
-
-    let y = pageHeader();
-    if (data.rows.length === 0) {
-      doc
-        .fillColor(documentMutedInk)
-        .fontSize(10)
-        .text(copy.empty, documentInset + cellPad, y + 11, {
-          width: width - 2 * cellPad,
-        });
-      return;
-    }
-
-    function addRow(cells: string[], shaded = false) {
-      const height = tableRow(doc, columns, cells, y, { measureOnly: true });
-      if (y + height > documentBottom(doc)) {
-        doc.addPage();
-        y = pageHeader();
-      }
-      y += tableRow(doc, columns, cells, y, { shaded });
-    }
-    for (const row of data.rows) addRow(dailyCells(row, data));
-    addRow(dailyTotals(data), true);
+  const date = formatDocumentDate(data.date, data.profile.dateFormat);
+  const count = copy.entryCount(
+    formatDecimal(BigInt(data.rows.length), 0, data.profile.numberFormat),
+  );
+  return renderTablePdf({
+    ...data,
+    title: copy.day,
+    subtitle: `${date}  |  ${count}`,
+    columns: dailyColumns(data),
+    rows: data.rows.map((row) => dailyCells(row, data)),
+    totalRows: data.rows.length ? [dailyTotals(data)] : [],
+    emptyMessage: copy.empty,
   });
 }

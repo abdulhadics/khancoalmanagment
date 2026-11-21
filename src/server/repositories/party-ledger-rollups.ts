@@ -21,6 +21,7 @@ export function partyLedgerRollupQuery(
   party: Party,
   matches: Prisma.Sql,
   asOf: string | Date,
+  from?: string | Date,
 ) {
   const customer = party === "customer";
   const partyId = customer
@@ -30,6 +31,11 @@ export function partyLedgerRollupQuery(
   const settlementKind = customer ? "CUSTOMER_RECEIPT" : "SUPPLIER_PAYMENT";
   const closingDate =
     typeof asOf === "string" ? asOf : asOf.toISOString().slice(0, 10);
+  const openingDate =
+    from instanceof Date ? from.toISOString().slice(0, 10) : from;
+  const start = openingDate
+    ? Prisma.sql`AND entry.business_date >= ${openingDate}::date`
+    : Prisma.empty;
 
   // Reversals repeat the linked revision. Use the posting direction rather than
   // amount sign because zero-priced dispatches still contribute trucks and weight.
@@ -47,7 +53,7 @@ export function partyLedgerRollupQuery(
     JOIN (${matches}) AS matched ON matched.id = ${partyId}
     LEFT JOIN order_revisions AS revision ON revision.id = entry.order_revision_id
     LEFT JOIN payments AS voucher ON voucher.id = entry.payment_id
-    WHERE entry.business_date <= ${closingDate}::date
+    WHERE entry.business_date <= ${closingDate}::date ${start}
     GROUP BY ${partyId}
   `;
 }
@@ -57,13 +63,14 @@ export async function getPartyRollups(
   party: Party,
   partyIds: readonly string[],
   asOf: string | Date = todayBusinessDate(),
+  from?: string | Date,
 ): Promise<PartyRollup[]> {
   if (partyIds.length === 0) return [];
   const ids = Prisma.join(partyIds.map((id) => Prisma.sql`(${id}::uuid)`));
   const matches = Prisma.sql`SELECT DISTINCT id FROM (VALUES ${ids}) AS requested(id)`;
   const rows = await tx.$queryRaw<BigIntTrucks<PartyRollup>[]>(Prisma.sql`
     SELECT "partyId", trucks, weight::text, billed::text, settled::text, balance::text
-    FROM (${partyLedgerRollupQuery(party, matches, asOf)}) AS rollup
+    FROM (${partyLedgerRollupQuery(party, matches, asOf, from)}) AS rollup
   `);
   return rows.map((row) => ({ ...row, trucks: Number(row.trucks) }));
 }

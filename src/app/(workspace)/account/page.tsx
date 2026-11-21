@@ -265,15 +265,23 @@ function PartyBalances({
                 </span>
               </td>
               <td className={cell}>
-                {row.isActive && (
-                  <Button size="sm" variant="outline" asChild>
-                    <Link
-                      href={accountUrl(query, { [action]: row.id }, formId)}
-                    >
-                      {receiving ? t.receive : t.pay}
-                    </Link>
-                  </Button>
-                )}
+                <div className="flex flex-wrap items-center gap-2">
+                  <Link
+                    className="font-medium text-primary hover:underline"
+                    href={`/details/${prefix}s?partyId=${row.id}`}
+                  >
+                    {t.ledger}
+                  </Link>
+                  {row.isActive && (
+                    <Button size="sm" variant="outline" asChild>
+                      <Link
+                        href={accountUrl(query, { [action]: row.id }, formId)}
+                      >
+                        {receiving ? t.receive : t.pay}
+                      </Link>
+                    </Button>
+                  )}
+                </div>
               </td>
             </tr>
           ))}

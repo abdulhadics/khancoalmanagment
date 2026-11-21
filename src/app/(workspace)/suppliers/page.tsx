@@ -1,5 +1,6 @@
 import { Building2, Plus, Search } from "lucide-react";
 import Link from "next/link";
+import { PartyActions } from "@/components/workspace/party-actions";
 import { notFound } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
@@ -354,9 +355,18 @@ export default async function SuppliersPage({ searchParams }: PageProps) {
                       </span>
                     </td>
                     <td className="p-2 text-end">
-                      <Button variant="ghost" className="h-8 px-3" asChild>
-                        <Link href={`/suppliers/${supplier.id}`}>{t.edit}</Link>
-                      </Button>
+                      <div className="flex items-center justify-end gap-2 whitespace-nowrap font-medium text-primary">
+                        <PartyActions
+                          kind="supplier"
+                          id={supplier.id}
+                          active={supplier.isActive}
+                        />
+                        <Button variant="ghost" className="h-8 px-3" asChild>
+                          <Link href={`/suppliers/${supplier.id}`}>
+                            {t.edit}
+                          </Link>
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))}

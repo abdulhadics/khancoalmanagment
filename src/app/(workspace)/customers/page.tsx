@@ -1,6 +1,7 @@
 import { Decimal } from "decimal.js";
 import { Plus, Search } from "lucide-react";
 import Link from "next/link";
+import { PartyActions } from "@/components/workspace/party-actions";
 import { notFound } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { formatCurrency, formatDecimal } from "@/domain/number-display";
@@ -236,13 +237,20 @@ function FinancialRows({ list }: { list: FinancialList }) {
                   </span>
                 </td>
                 <td className="px-4 py-3 text-end">
-                  <Link
-                    href={`/customers/${row.id}`}
-                    className="inline-flex min-h-9 items-center rounded-md px-2 font-semibold text-primary hover:underline"
-                  >
-                    {t.edit}
-                    <span className="sr-only"> {row.name}</span>
-                  </Link>
+                  <div className="flex items-center justify-end gap-2 whitespace-nowrap font-medium text-primary">
+                    <PartyActions
+                      kind="customer"
+                      id={row.id}
+                      active={row.isActive}
+                    />
+                    <Link
+                      href={`/customers/${row.id}`}
+                      className="inline-flex min-h-9 items-center rounded-md px-2 font-semibold text-primary hover:underline"
+                    >
+                      {t.edit}
+                      <span className="sr-only"> {row.name}</span>
+                    </Link>
+                  </div>
                 </td>
               </tr>
             );

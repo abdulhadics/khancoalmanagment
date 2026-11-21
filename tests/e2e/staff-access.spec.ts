@@ -177,10 +177,6 @@ test("Owner records opening balances and configures company settings", async ({
     page.getByRole("combobox", { name: "Date format", exact: true }),
   ).toHaveValue("yyyy-MM-dd");
   await page.evaluate(() => window.scrollTo(0, 0));
-  await page.screenshot({
-    path: test.info().outputPath("settings-desktop.png"),
-    fullPage: true,
-  });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.evaluate(() => window.scrollTo(0, 0));
   expect(
@@ -188,10 +184,6 @@ test("Owner records opening balances and configures company settings", async ({
       () => document.documentElement.scrollWidth <= window.innerWidth,
     ),
   ).toBe(true);
-  await page.screenshot({
-    path: test.info().outputPath("settings-mobile.png"),
-    fullPage: true,
-  });
 });
 
 test("Owner adds dispatch parties in place and posts an exact-priced truck", async ({
@@ -242,6 +234,14 @@ test("Owner adds dispatch parties in place and posts an exact-priced truck", asy
   expect(response.headers()["content-type"]).toMatch(/application\/pdf/);
   expect((await response.body()).subarray(0, 4).toString()).toBe("%PDF");
 
+  await page.goto("/details/sales?q=KCS-900");
+  await expect(
+    page.getByRole("heading", { name: "Sales Details", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByRole("row", { name: /KCS-900/ })).toContainText(
+    /20\.01/,
+  );
+  await page.goto("/orders");
   await order.getByRole("link", { name: "Edit", exact: true }).click();
   await page
     .getByRole("textbox", { name: "Vehicle number", exact: true })
@@ -351,17 +351,31 @@ test("Owner records a quick receipt and a supplier payment with voucher PDFs", a
     suppliers.getByRole("row", { name: /Payment Test Supplier/ }),
   ).toContainText(/600\.00/);
   await page.evaluate(() => window.scrollTo(0, 0));
-  await page.screenshot({
-    path: test.info().outputPath("account-desktop.png"),
-    fullPage: true,
-  });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.evaluate(() => window.scrollTo(0, 0));
-  await page.screenshot({
-    path: test.info().outputPath("account-mobile.png"),
-    fullPage: true,
-  });
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth),
   ).toBeLessThanOrEqual(390);
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await customers
+    .getByRole("row", { name: /Payment Test Customer/ })
+    .getByRole("link", { name: "Ledger", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Customer Details", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText(/874\.75/).first()).toBeVisible();
+  const csvHref = await page
+    .getByRole("link", { name: /CSV/i })
+    .getAttribute("href");
+  expect(csvHref).toBeTruthy();
+  const ledgerCsv = await page.request.get(csvHref!);
+  expect(ledgerCsv.headers()["content-type"]).toMatch(/text\/csv/);
+  expect(await ledgerCsv.text()).toContain("125.25");
+
+  await page.goto(`/details/suppliers?partyId=${supplierId}`);
+  await expect(
+    page.getByRole("heading", { name: /^Suppliers? Details$/ }),
+  ).toBeVisible();
+  await expect(page.getByText(/600\.00/).first()).toBeVisible();
 });

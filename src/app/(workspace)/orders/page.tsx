@@ -23,6 +23,8 @@ type Query = {
   page?: string | string[];
   duplicate?: string | string[];
   updated?: string | string[];
+  customerId?: string | string[];
+  supplierId?: string | string[];
 };
 
 function currentDate(value: Query["date"], fallback: string) {
@@ -58,6 +60,12 @@ export default async function OrderEntryPage({
       ? readOrderForWorkspace(db, actor, query.duplicate)
       : null,
   ]);
+  const chosenCustomer = options.customers.find(
+    ({ id }) => id === query.customerId,
+  );
+  const chosenSupplier = options.suppliers.find(
+    ({ id }) => id === query.supplierId,
+  );
   const initial = source
     ? {
         customerId: source.customerId,
@@ -69,7 +77,14 @@ export default async function OrderEntryPage({
         purchaseRate: source.purchaseRate ?? "",
         notes: source.notes,
       }
-    : undefined;
+    : chosenCustomer || chosenSupplier
+      ? {
+          customerId: chosenCustomer?.id ?? "",
+          supplierId: chosenSupplier?.id ?? "",
+          mineId:
+            chosenSupplier?.mines.find(({ isDefault }) => isDefault)?.id ?? "",
+        }
+      : undefined;
   const onlyDate = (pageNumber: number) =>
     `/orders?date=${date}&page=${pageNumber}#daily-orders`;
   const unit = t.weightUnits[preferences.weightUnit];
@@ -104,7 +119,10 @@ export default async function OrderEntryPage({
         </p>
       )}
       <OrderGrid
-        key={source?.id ?? date}
+        key={
+          source?.id ??
+          `${date}:${chosenCustomer?.id ?? ""}:${chosenSupplier?.id ?? ""}`
+        }
         initialDate={date > today ? today : date}
         firstKey={randomUUID()}
         dateLocked={dateLocked}

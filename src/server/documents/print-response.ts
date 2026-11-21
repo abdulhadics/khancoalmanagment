@@ -7,15 +7,35 @@ const responseHeaders = {
   "X-Content-Type-Options": "nosniff",
 };
 
-export function pdfResponse(body: Uint8Array<ArrayBuffer>, filename: string) {
+function documentResponse(
+  body: Uint8Array<ArrayBuffer>,
+  filename: string,
+  extension: string,
+  type: string,
+  disposition: "inline" | "attachment",
+) {
   const safeName = filename.replace(/[^a-zA-Z0-9._-]+/g, "-");
   return new Response(body, {
     headers: {
       ...responseHeaders,
-      "Content-Type": "application/pdf",
-      "Content-Disposition": `inline; filename="${safeName}.pdf"`,
+      "Content-Type": type,
+      "Content-Disposition": `${disposition}; filename="${safeName}.${extension}"`,
     },
   });
+}
+
+export function pdfResponse(body: Uint8Array<ArrayBuffer>, filename: string) {
+  return documentResponse(body, filename, "pdf", "application/pdf", "inline");
+}
+
+export function csvResponse(body: Uint8Array<ArrayBuffer>, filename: string) {
+  return documentResponse(
+    body,
+    filename,
+    "csv",
+    "text/csv; charset=utf-8; header=present",
+    "attachment",
+  );
 }
 
 export function printTextResponse(message: string, status: number) {
