@@ -1,0 +1,363 @@
+.dashboard {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.header h1 {
+  font-size: 2rem;
+  font-weight: 720;
+  line-height: 1.2;
+  letter-spacing: -0.034em;
+}
+
+.dateRange {
+  margin-block-start: 0.35rem;
+  color: var(--muted-foreground);
+  font-size: 0.875rem;
+}
+
+.periods {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  padding: 0.3rem;
+  border: 1px solid var(--border);
+  border-radius: 0.65rem;
+  background: var(--card);
+}
+
+.periods a {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 2.25rem;
+  padding-inline: 0.75rem;
+  border-radius: 0.4rem;
+  font-size: 0.8125rem;
+  font-weight: 650;
+}
+
+.periods a:hover {
+  background: var(--muted);
+}
+
+.periods a[aria-current="page"] {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.filterForm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.75rem;
+}
+
+.filterForm label {
+  display: grid;
+  gap: 0.3rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.filterForm input {
+  min-block-size: 2.5rem;
+  padding-inline: 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  background: var(--card);
+}
+
+.totals,
+.indicators {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+  gap: 0.75rem;
+}
+
+.total,
+.indicator {
+  min-inline-size: 0;
+  padding: 1rem 1.15rem;
+  border-radius: var(--radius);
+}
+
+.total {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  color: #fdfaff;
+  background: #271f3d;
+}
+
+.total:nth-child(2) {
+  background: #222940;
+}
+.total:nth-child(3) {
+  background: #38275a;
+}
+
+.totalTitle {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  color: #efe8fa;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.total dt svg {
+  flex-shrink: 0;
+}
+
+.totalValue,
+.indicatorValue {
+  overflow-wrap: anywhere;
+  font-size: clamp(1.25rem, 2.5vw, 1.7rem);
+  font-weight: 720;
+  line-height: 1.2;
+  letter-spacing: -0.027em;
+  font-variant-numeric: tabular-nums;
+}
+
+.comparison {
+  display: grid;
+  gap: 0.3rem;
+  margin-block-start: auto;
+  padding-block-start: 0.6rem;
+  color: #eee7f7;
+  font-size: 0.75rem;
+}
+
+.comparison li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.1rem 0.5rem;
+  padding-block-start: 0.3rem;
+  border-block-start: 1px solid #ffffff24;
+  font-variant-numeric: tabular-nums;
+}
+
+.indicator,
+.panel {
+  min-inline-size: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+}
+
+.indicator dt {
+  margin-block-end: 0.35rem;
+  color: var(--muted-foreground);
+  font-size: 0.8125rem;
+  font-weight: 620;
+}
+
+.indicator small {
+  display: block;
+  margin-block-start: 0.4rem;
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+}
+
+.financialPanels,
+.activity {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: 1rem;
+}
+
+.panelHeading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 0.8rem;
+  padding: 1rem 1.15rem;
+}
+
+.panel h2 {
+  font-size: 1rem;
+  font-weight: 710;
+}
+
+.panel a {
+  color: var(--primary);
+  font-size: 0.8125rem;
+  font-weight: 650;
+  text-underline-offset: 0.2rem;
+}
+
+.panel a:hover {
+  text-decoration: underline;
+}
+
+.balanceList {
+  display: grid;
+  gap: 0.8rem;
+  padding: 0 1.15rem 1.15rem;
+}
+
+.balanceList div {
+  padding: 0.85rem 0.95rem;
+  border-radius: 0.5rem;
+  background: var(--muted);
+}
+
+.balanceList dt {
+  margin-block-end: 0.3rem;
+  font-size: 0.8125rem;
+  color: var(--muted-foreground);
+}
+
+.balanceList dd {
+  overflow-wrap: anywhere;
+  font-size: 1.25rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 680;
+}
+
+.legend,
+.legend span {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.legend {
+  gap: 0.75rem;
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+}
+
+.legend i {
+  inline-size: 0.625rem;
+  block-size: 0.625rem;
+  border-radius: 0.15rem;
+}
+
+.sales {
+  background: #6b46bb;
+}
+.purchase {
+  background: #208073;
+}
+
+.chart {
+  padding: 0 1.15rem 0.6rem;
+}
+
+.plot,
+.monthLabels {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 0.2rem;
+}
+
+.plot {
+  position: relative;
+  block-size: 10rem;
+  border-block: 1px solid var(--border);
+  background: repeating-linear-gradient(
+    to top,
+    transparent 0 calc(25% - 1px),
+    var(--muted) calc(25% - 1px) 25%
+  );
+}
+
+.plot::before {
+  position: absolute;
+  inset-inline: 0;
+  bottom: var(--baseline);
+  border-block-end: 1px solid #8d849e;
+  content: "";
+}
+
+.barPair {
+  position: relative;
+}
+
+.bar {
+  position: absolute;
+  inline-size: min(36%, 1rem);
+  border-radius: 0.15rem;
+}
+
+.bar:first-child {
+  inset-inline-end: calc(50% + 1px);
+}
+.bar:last-child {
+  inset-inline-start: calc(50% + 1px);
+}
+
+.monthLabels {
+  margin-block-start: 0.3rem;
+  color: var(--muted-foreground);
+  text-align: center;
+  font-size: clamp(0.52rem, 1.55vw, 0.72rem);
+}
+
+.chartData {
+  margin-inline: 1.15rem;
+  margin-block-end: 0.7rem;
+  font-size: 0.8125rem;
+}
+
+.chartData summary {
+  display: list-item;
+  width: fit-content;
+  padding-block: 0.45rem;
+  color: var(--primary);
+  cursor: pointer;
+  font-weight: 650;
+}
+
+.dataScroll {
+  overflow-x: auto;
+}
+
+.dataTable {
+  inline-size: 100%;
+  border-collapse: collapse;
+  text-align: start;
+  font-size: 0.8125rem;
+}
+
+.dataTable :is(th, td) {
+  padding: 0.6rem 0.8rem;
+  border-block-start: 1px solid var(--border);
+  text-align: start;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.dataTable thead th {
+  color: var(--muted-foreground);
+  background: #f8f7fb;
+  font-weight: 620;
+}
+
+.empty {
+  padding: 0 1.15rem 1.15rem;
+  color: var(--muted-foreground);
+  font-size: 0.875rem;
+}
+
+@media (min-width: 75rem) {
+  .financialPanels {
+    grid-template-columns: minmax(0, 2.25fr) minmax(0, 1fr);
+  }
+  .activity:has(> :nth-child(2)) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

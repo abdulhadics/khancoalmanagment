@@ -105,7 +105,7 @@ test("Owner creates a Viewer whose access is restricted and revoked when disable
   }
 
   await page.goto("/");
-  await page.locator("summary").click();
+  await page.getByLabel("Profile", { exact: true }).click();
   await page.getByRole("button", { name: "Sign out", exact: true }).click();
   await expect(page).toHaveURL(/\/login$/);
 });
@@ -253,6 +253,28 @@ test("Owner adds dispatch parties in place and posts an exact-priced truck", asy
   await expect(
     page.getByRole("row", { name: /Dispatch Test Foundry/ }),
   ).toContainText(/20\.01/);
+
+  await page.goto("/?period=today");
+  await expect(
+    page.getByRole("link", { name: "Today", exact: true }),
+  ).toHaveAttribute("aria-current", "page");
+  const summary = page.getByLabel("Dispatch and sales totals");
+  await expect(summary.getByText(/50\.03/).first()).toBeVisible();
+  await expect(page.getByRole("row", { name: /KCS-900/ })).toBeVisible();
+  await page.getByText("View monthly totals", { exact: true }).click();
+  await expect(
+    page.getByRole("table", { name: "Monthly sales and purchases" }),
+  ).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  await page.getByRole("link", { name: "Custom range" }).click();
+  await expect(page.getByRole("button", { name: "Apply dates" })).toBeVisible();
+  await page.setViewportSize({ width: 1280, height: 720 });
+
   await page.goto("/orders");
   await order.getByRole("link", { name: "Edit", exact: true }).click();
   await page

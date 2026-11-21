@@ -61,3 +61,9 @@ Use **CSV** or **PDF / Print** to export the filtered list across its pages. Nar
 Open **Reports → Sales Report** for dispatch count, weight, sales, purchases, and profit. Filter by year, month, date range, customer, or supplier. Group rows by entry, date, customer, supplier, or mine. The summary covers the full filtered period as you move between pages or change grouping.
 
 Use **Customers Report** or **Suppliers Report** to see party balances. The closing balance combines the opening balance and the signed movements in the chosen period. Open a party's report for the individual entries that make up its balance. Choose **PDF / Print** or **CSV** to export the active filters for any of the five reports.
+
+## Dashboard
+
+The dashboard opens to **This month**. Use the period selector to change the date range. Presets run through the current Karachi business date and **This week** starts on Monday. Use **Custom range** to enter both dates. The monthly chart shows twelve months through the selected end date. Expand **View monthly totals** to read exact amounts.
+
+Receivables and supplier dues show outstanding amounts through the selected end date. Cash out and balance in hand cover movements within the selected period. Company counts reflect the current directory. The recent order and voucher lists follow the selected dates and staff permissions. Operators see their own dispatch count, weight, and orders for the current business day.
