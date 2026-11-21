@@ -10,7 +10,13 @@ import { primaryMenu, settingsItem, type Destination } from "./navigation";
 
 const { common } = messages;
 
-function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
+function SidebarNav({
+  allowedRoutes,
+  onNavigate,
+}: {
+  allowedRoutes: readonly string[];
+  onNavigate?: () => void;
+}) {
   const pathname = usePathname();
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
@@ -39,7 +45,11 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
           {primaryMenu.map((item) => {
             const Icon = item.icon;
             if ("children" in item) {
-              const isCurrent = item.children.some(
+              const children = item.children.filter(({ href }) =>
+                allowedRoutes.includes(href),
+              );
+              if (children.length === 0) return null;
+              const isCurrent = children.some(
                 (child) => child.href === pathname,
               );
               const open = expanded[item.label] ?? isCurrent;
@@ -66,7 +76,7 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
                   </button>
                   {open && (
                     <ul className="nav-children">
-                      {item.children.map((child) => (
+                      {children.map((child) => (
                         <li key={child.href}>
                           <Link className="nav-item" {...linkProps(child)}>
                             {child.label}
@@ -78,6 +88,7 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
                 </li>
               );
             }
+            if (!allowedRoutes.includes(item.href)) return null;
             return (
               <li key={item.href}>
                 <Link className="nav-item" {...linkProps(item)}>
@@ -88,26 +99,28 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
             );
           })}
         </ul>
-        <div className="sidebar-settings">
-          <Link className="nav-item" {...linkProps(settingsItem)}>
-            <settingsItem.icon aria-hidden="true" size={18} />
-            {settingsItem.label}
-          </Link>
-        </div>
+        {allowedRoutes.includes(settingsItem.href) && (
+          <div className="sidebar-settings">
+            <Link className="nav-item" {...linkProps(settingsItem)}>
+              <settingsItem.icon aria-hidden="true" size={18} />
+              {settingsItem.label}
+            </Link>
+          </div>
+        )}
       </nav>
     </>
   );
 }
 
-export function DesktopSidebar() {
+export function DesktopSidebar({ allowedRoutes }: { allowedRoutes: string[] }) {
   return (
     <aside className="desktop-sidebar">
-      <SidebarNav />
+      <SidebarNav allowedRoutes={allowedRoutes} />
     </aside>
   );
 }
 
-export function MobileSidebar() {
+export function MobileSidebar({ allowedRoutes }: { allowedRoutes: string[] }) {
   const dialog = useRef<HTMLDialogElement>(null);
 
   return (
@@ -138,7 +151,10 @@ export function MobileSidebar() {
           >
             <X aria-hidden="true" size={20} />
           </button>
-          <SidebarNav onNavigate={() => dialog.current?.close()} />
+          <SidebarNav
+            allowedRoutes={allowedRoutes}
+            onNavigate={() => dialog.current?.close()}
+          />
         </div>
       </dialog>
     </div>

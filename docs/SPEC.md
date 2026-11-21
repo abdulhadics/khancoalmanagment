@@ -29,7 +29,7 @@ The pasted build brief defines the requirements. The prototype at `salmancoalapp
 | An Owner opens user management | They create, disable, assign a role, or reset a user | Server-side checks protect the last active Owner, changes are audited, and the list displays role, status, and last successful login. |
 | An Accountant, Operator, or Viewer requests a privileged operation directly | The route, action, or export receives their request | The server applies the same permissions used by navigation and checks ownership, record date, and field access where applicable. An Operator never receives buy rates, purchase amounts, profit, or reports in any response. |
 
-The Owner administers the application and its data. The Accountant handles orders, payments, master data, ledgers, reports, and exports. The Operator views parties and operational dashboard data, creates dispatches pending pricing, and can edit their own pending dispatches within the current business day and open period. The Viewer reads dashboards and reports. The complete action and field matrix lives in `docs/PERMISSIONS.md`.
+The Owner administers the application and its data. The Accountant handles orders, payments, master data, ledgers, reports, and exports. The Operator views parties and operational dashboard data and creates dispatches pending pricing. Within the current business day and an open period, the Operator can edit their own pending dispatches or update vehicle, bilty, and notes on their own posted orders. The Viewer reads dashboards and reports. The complete action and field matrix lives in `docs/PERMISSIONS.md`.
 
 ## Dashboard and workspace
 

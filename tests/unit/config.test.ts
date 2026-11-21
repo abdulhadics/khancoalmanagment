@@ -56,6 +56,9 @@ describe("deployment configuration", () => {
         DEPLOYMENT_ENV: "production",
         APP_ORIGIN: "https://coal.example.test",
         DATABASE_URL,
+        AUTH_ENCRYPTION_KEY: Buffer.alloc(32).toString("base64url"),
+        SMTP_URL: "smtps://relay.example.test",
+        SMTP_FROM: "reset@coal.example.test",
       }),
     ).toMatchObject({ DEPLOYMENT_ENV: "production", DATABASE_URL });
   });

@@ -54,6 +54,28 @@ const environment = z
       .pipe(z.number().int().min(1).max(65535))
       .default(3000),
     DATABASE_URL: databaseUrl.optional(),
+    AUTH_ENCRYPTION_KEY: z
+      .string()
+      .regex(/^[A-Za-z0-9_-]{43}$/, "Use a 32-byte base64url key.")
+      .refine(
+        (value) =>
+          Buffer.from(value, "base64url").toString("base64url") === value,
+        "Use canonical base64url encoding.",
+      )
+      .optional(),
+    SMTP_URL: z
+      .string()
+      .refine((value) => {
+        const url = urlWithScheme(value, ["smtp:", "smtps:"]);
+        return (
+          url !== null &&
+          !url.search &&
+          !url.hash &&
+          ["", "/"].includes(url.pathname)
+        );
+      }, "Use an SMTP connection URL without query options.")
+      .optional(),
+    SMTP_FROM: z.email().optional(),
   })
   .superRefine((value, context) => {
     if (value.DEPLOYMENT_ENV === "development") {
@@ -72,6 +94,19 @@ const environment = z
         path: ["DATABASE_URL"],
         message: "Production requires a PostgreSQL URL.",
       });
+    }
+    for (const key of [
+      "AUTH_ENCRYPTION_KEY",
+      "SMTP_URL",
+      "SMTP_FROM",
+    ] as const) {
+      if (!value[key]) {
+        context.addIssue({
+          code: "custom",
+          path: [key],
+          message: "Set this value for production authentication.",
+        });
+      }
     }
   });
 

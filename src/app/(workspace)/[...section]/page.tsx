@@ -3,8 +3,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { destinations } from "@/components/workspace/navigation";
+import {
+  destinations,
+  permissionForDestination,
+} from "@/components/workspace/navigation";
+import { can } from "@/domain/permissions";
 import { messages } from "@/i18n";
+import { requireActor } from "@/server/auth/request-context";
 
 type Props = { params: Promise<{ section: string[] }> };
 
@@ -20,8 +25,13 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
 }
 
 export default async function ModuleSetup(props: Props) {
+  const actor = await requireActor();
   const destination = await currentDestination(props);
-  if (!destination) notFound();
+  if (
+    !destination ||
+    !can(actor.roleCode, permissionForDestination(destination.href))
+  )
+    notFound();
 
   return (
     <>

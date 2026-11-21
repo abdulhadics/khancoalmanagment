@@ -1,6 +1,6 @@
 # KhanCoalSupplier
 
-KhanCoalSupplier is a coal-supply workspace for recording truck dispatches, customer receipts, supplier payments, and balances in Pakistan. The foundation includes the responsive workspace, English message catalog, and PostgreSQL schema. The workspace remains a setup view until staff sign-in and business workflows are implemented.
+KhanCoalSupplier is a coal-supply workspace for recording truck dispatches, customer receipts, supplier payments, and balances in Pakistan. This version includes the responsive workspace, PostgreSQL schema, staff sign-in, roles, and account management. Business modules will appear as their workflows are implemented.
 
 ## Run locally on Windows
 
@@ -30,6 +30,8 @@ For the first Owner, provide `OWNER_EMAIL`, `OWNER_USERNAME`, `OWNER_DISPLAY_NAM
 
 Production uses a separate `MIGRATION_DATABASE_URL` for schema changes and a restricted `DATABASE_URL` for application access. After migrating, connect `psql` to the application database as the schema owner and apply the grants with `-v ON_ERROR_STOP=1 -v application_role=khancoal_app -f scripts/grant-database-access.sql`. Replace `khancoal_app` with the name of the existing application login. Keep database credentials outside Git.
 
+Production sign-in requires an HTTPS `APP_ORIGIN`, a 32-byte base64url `AUTH_ENCRYPTION_KEY`, and `SMTP_URL` and `SMTP_FROM` for recovery email. The first Owner changes the temporary password and enrolls an authenticator before accessing the production workspace. Keep the key available across app restarts. Terminate TLS at the local reverse proxy, preserve the public Host, and set `X-KC-Client-IP` to the actual client address at the proxy so audit and throttle records can use it.
+
 ## Checks
 
 ```powershell
@@ -39,6 +41,8 @@ npm.cmd run check
 The check command runs lint, type-check, tests, and the build. To run the production build locally, use `npm run start` after `npm run build`. GitHub Actions runs on Windows Server and verifies the npm lockfile, lint, types, tests, build, dependency advisories, and Git history for leaked secrets.
 
 Run the native PostgreSQL integration checks with `./scripts/test-postgres-windows.ps1`. Pass `-PostgresBin` to reuse an existing PostgreSQL binary directory. To use an already running local test cluster, set `TEST_ADMIN_DATABASE_URL` to its `postgres` maintenance database and run `npm.cmd run test:integration`. The harness creates, migrates, and removes a fresh test database for each run.
+
+Set `RUN_BROWSER_TESTS=1` after `npm.cmd run build` to include the Edge sign-in and staff-access workflow in the same isolated database run.
 
 ## Project documentation
 

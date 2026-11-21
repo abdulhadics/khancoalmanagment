@@ -37,7 +37,7 @@ export const en = {
       "The workspace is being prepared for dispatch and accounting.",
     statusHeading: "Development setup",
     statusDescription:
-      "This workspace is for local development. Connect the database and set up staff access before entering business records.",
+      "Staff sign-in is ready. Dispatch, accounts, and reports will become available as each module is built.",
     moduleHeading: "Module setup",
     moduleDescription: "This module is being prepared for use.",
   },

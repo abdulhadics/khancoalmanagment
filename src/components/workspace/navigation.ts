@@ -10,6 +10,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { messages } from "@/i18n";
+import type { Permission } from "@/domain/permissions";
 
 export type Destination = {
   href: string;
@@ -59,3 +60,21 @@ export const settingsItem = {
 export const destinations = [...primaryMenu, settingsItem].flatMap<Destination>(
   (item) => ("children" in item ? item.children : [item]),
 );
+
+export function permissionForDestination(href: string): Permission {
+  if (href.startsWith("/details/")) return "details.view";
+  if (href.startsWith("/reports/")) return "reports.view";
+  switch (href) {
+    case "/":
+      return "dashboard.view";
+    case "/orders":
+      return "orders.create";
+    case "/account":
+      return "account.view";
+    case "/customers":
+    case "/suppliers":
+      return "parties.view";
+    default:
+      return "settings.manage";
+  }
+}

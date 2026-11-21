@@ -26,7 +26,9 @@ function readTestAdminUrl() {
 function runNpm(script: string, environment: NodeJS.ProcessEnv) {
   const npm = process.env.npm_execpath;
   if (!npm) {
-    throw new Error("Run the database harness through npm run test:integration.");
+    throw new Error(
+      "Run the database harness through npm run test:integration.",
+    );
   }
 
   const child = spawnSync(process.execPath, [npm, "run", script], {
@@ -65,6 +67,9 @@ async function testAgainstFreshDatabase() {
 
     runNpm("db:migrate", environment);
     runNpm("test:integration:prepared", environment);
+    if (process.env.RUN_BROWSER_TESTS === "1") {
+      runNpm("test:e2e:prepared", environment);
+    }
   } finally {
     try {
       if (created) {
@@ -78,7 +83,9 @@ async function testAgainstFreshDatabase() {
 
 testAgainstFreshDatabase().catch((error: unknown) => {
   console.error(
-    error instanceof Error ? error.message : "Database integration checks failed.",
+    error instanceof Error
+      ? error.message
+      : "Database integration checks failed.",
   );
   process.exitCode = 1;
 });

@@ -15,6 +15,7 @@
     "test": "vitest run",
     "test:integration": "node --import tsx scripts/test-database.ts",
     "test:integration:prepared": "vitest run --config vitest.integration.config.ts",
+    "test:e2e:prepared": "playwright test",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate deploy",
     "db:seed-owner": "node --import tsx scripts/seed-owner.ts",
@@ -34,6 +35,7 @@
     "decimal.js": "10.6.0",
     "lucide-react": "1.77.0",
     "next": "16.4.6",
+    "nodemailer": "10.6.1",
     "pg": "8.16.3",
     "react": "19.3.1",
     "react-dom": "19.3.1",
@@ -42,8 +44,10 @@
     "zod": "4.6.7"
   },
   "devDependencies": {
+    "@playwright/test": "1.65.1",
     "@tailwindcss/postcss": "4.3.5",
     "@types/node": "^22.0.0",
+    "@types/nodemailer": "8.0.2",
     "@types/pg": "8.15.6",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",

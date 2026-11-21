@@ -50,9 +50,11 @@ jobs:
         run: npm run typecheck
       - name: Run tests
         run: npm test
-      - name: Migrate and test against native PostgreSQL
-        run: ./scripts/test-postgres-windows.ps1
       - name: Build
         run: npm run build
+      - name: Migrate and test against native PostgreSQL
+        env:
+          RUN_BROWSER_TESTS: 1
+        run: ./scripts/test-postgres-windows.ps1
       - name: Audit dependencies
         run: npm audit --audit-level=high

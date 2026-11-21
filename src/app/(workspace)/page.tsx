@@ -1,6 +1,9 @@
 import { Database, Truck, Wallet, UsersRound } from "lucide-react";
 import Link from "next/link";
+import { permissionForDestination } from "@/components/workspace/navigation";
+import { can } from "@/domain/permissions";
 import { messages } from "@/i18n";
+import { requireActor } from "@/server/auth/request-context";
 
 const { nav, setup } = messages;
 
@@ -10,7 +13,11 @@ const primaryDestinations = [
   { label: nav.customers, href: "/customers", icon: UsersRound },
 ];
 
-export default function DashboardSetup() {
+export default async function DashboardSetup() {
+  const actor = await requireActor();
+  const modules = primaryDestinations.filter(({ href }) =>
+    can(actor.roleCode, permissionForDestination(href)),
+  );
   return (
     <>
       <div className="page-heading">
@@ -30,19 +37,21 @@ export default function DashboardSetup() {
         </div>
       </section>
 
-      <section className="module-navigation" aria-labelledby="module-heading">
-        <h2 id="module-heading">{setup.moduleHeading}</h2>
-        <ul className="module-links">
-          {primaryDestinations.map(({ href, label, icon: Icon }) => (
-            <li key={href}>
-              <Link href={href}>
-                <Icon aria-hidden="true" size={21} />
-                {label}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </section>
+      {modules.length > 0 && (
+        <section className="module-navigation" aria-labelledby="module-heading">
+          <h2 id="module-heading">{setup.moduleHeading}</h2>
+          <ul className="module-links">
+            {modules.map(({ href, label, icon: Icon }) => (
+              <li key={href}>
+                <Link href={href}>
+                  <Icon aria-hidden="true" size={21} />
+                  {label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </>
   );
 }
