@@ -1,6 +1,6 @@
 # KhanCoalSupplier
 
-KhanCoalSupplier is a coal-supply workspace for recording truck dispatches, customer receipts, supplier payments, and balances in Pakistan. This version includes the responsive workspace, PostgreSQL schema, staff sign-in, roles, and account management. Business modules will appear as their workflows are implemented.
+KhanCoalSupplier is a coal-supply workspace for recording truck dispatches, customer receipts, supplier payments, and balances in Pakistan. This version includes the responsive workspace, staff access, customer and supplier records, mines, company and bank settings, and dated opening balances.
 
 ## Run locally on Windows
 
@@ -50,4 +50,5 @@ Set `RUN_BROWSER_TESTS=1` after `npm.cmd run build` to include the Edge sign-in 
 - [Architecture](docs/ARCHITECTURE.md) and [decision records](docs/DECISIONS.md)
 - [Data model](docs/DATA_MODEL.md) and [permissions](docs/PERMISSIONS.md)
 - [Threat model](docs/THREAT_MODEL.md) and [test plan](docs/TEST_PLAN.md)
+- [Security controls](docs/SECURITY.md) and [user guide](docs/USER_GUIDE.md)
 - [Delivery milestones](docs/DELIVERY_PLAN.md)

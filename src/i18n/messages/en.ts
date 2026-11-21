@@ -36,9 +36,13 @@ export const en = {
     sectionDescription:
       "The workspace is being prepared for dispatch and accounting.",
     statusHeading: "Development setup",
-    statusDescription:
-      "Staff sign-in is ready. Dispatch, accounts, and reports will become available as each module is built.",
-    moduleHeading: "Module setup",
+    configureParties:
+      "Add your customers, suppliers, and mines to prepare for truck dispatches.",
+    browseParties:
+      "Use the customer and supplier directories to look up active parties and mines.",
+    reportsPending:
+      "Financial reports will appear here when reporting is available.",
+    moduleHeading: "Workspace records",
     moduleDescription: "This module is being prepared for use.",
   },
 } as const;

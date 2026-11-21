@@ -1,4 +1,4 @@
-import { Database, Truck, Wallet, UsersRound } from "lucide-react";
+import { Building2, Database, Settings, UsersRound } from "lucide-react";
 import Link from "next/link";
 import { permissionForDestination } from "@/components/workspace/navigation";
 import { can } from "@/domain/permissions";
@@ -8,9 +8,9 @@ import { requireActor } from "@/server/auth/request-context";
 const { nav, setup } = messages;
 
 const primaryDestinations = [
-  { label: nav.orderEntry, href: "/orders", icon: Truck },
-  { label: nav.account, href: "/account", icon: Wallet },
   { label: nav.customers, href: "/customers", icon: UsersRound },
+  { label: nav.suppliers, href: "/suppliers", icon: Building2 },
+  { label: nav.settings, href: "/settings", icon: Settings },
 ];
 
 export default async function DashboardSetup() {
@@ -28,7 +28,13 @@ export default async function DashboardSetup() {
       <section className="setup-panel" aria-labelledby="setup-heading">
         <div className="setup-copy">
           <h2 id="setup-heading">{setup.sectionHeading}</h2>
-          <p>{setup.statusDescription}</p>
+          <p>
+            {can(actor.roleCode, "parties.manage")
+              ? setup.configureParties
+              : can(actor.roleCode, "parties.view")
+                ? setup.browseParties
+                : setup.reportsPending}
+          </p>
         </div>
         <div className="setup-illustration" aria-hidden="true">
           <span className="setup-illustration-icon">

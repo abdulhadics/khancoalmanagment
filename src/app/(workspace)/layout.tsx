@@ -7,11 +7,12 @@ import {
   permissionForDestination,
 } from "@/components/workspace/navigation";
 import { DesktopSidebar, MobileSidebar } from "@/components/workspace/sidebar";
-import { formatBusinessDate } from "@/domain/business-date";
 import { can } from "@/domain/permissions";
 import { messages } from "@/i18n";
 import { auth } from "@/i18n/messages/auth-en";
 import { requireActor } from "@/server/auth/request-context";
+import { getDatabase } from "@/server/db/client";
+import { readWorkspaceDate } from "@/server/settings/company";
 
 export default async function WorkspaceLayout({
   children,
@@ -19,7 +20,7 @@ export default async function WorkspaceLayout({
   children: ReactNode;
 }) {
   const actor = await requireActor();
-  const today = formatBusinessDate(new Date());
+  const today = await readWorkspaceDate(getDatabase());
   const allowedRoutes = destinations
     .filter(({ href }) => can(actor.roleCode, permissionForDestination(href)))
     .map(({ href }) => href);

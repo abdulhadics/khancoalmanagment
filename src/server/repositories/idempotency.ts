@@ -71,12 +71,14 @@ export function runIdempotentCommand(
   database: PrismaClient,
   input: CommandInput,
   execute: (tx: Prisma.TransactionClient) => Promise<CommandResult>,
+  authorize?: (tx: Prisma.TransactionClient) => Promise<void>,
 ) {
   const { actorId, operation, key, requestDigest, expiresAt } = input;
   const where = { actorId_operation_key: { actorId, operation, key } };
 
   return database.$transaction(
     async (tx) => {
+      await authorize?.(tx);
       // The unique key blocks a simultaneous retry until the first transaction
       // completes. Read Committed lets the next statement see its committed result.
       const claim = await tx.idempotencyKey.createMany({

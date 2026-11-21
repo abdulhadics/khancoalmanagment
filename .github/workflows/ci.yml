@@ -15,7 +15,7 @@ jobs:
     runs-on: windows-2025
     timeout-minutes: 20
     env:
-      NEXT_TELEMETRY_DISABLED: 1
+      NEXT_TELEMETRY_DISABLED: "1"
     defaults:
       run:
         shell: pwsh
@@ -54,7 +54,7 @@ jobs:
         run: npm run build
       - name: Migrate and test against native PostgreSQL
         env:
-          RUN_BROWSER_TESTS: 1
+          RUN_BROWSER_TESTS: "1"
         run: ./scripts/test-postgres-windows.ps1
       - name: Audit dependencies
         run: npm audit --audit-level=high
