@@ -193,3 +193,68 @@ test("Owner records opening balances and configures company settings", async ({
     fullPage: true,
   });
 });
+
+test("Owner adds dispatch parties in place and posts an exact-priced truck", async ({
+  page,
+}) => {
+  const password = randomBytes(24).toString("base64url");
+  await createBrowserOwner("browser-dispatch-owner", password, false);
+  await logIn(page, "browser-dispatch-owner", password);
+  await page.getByRole("link", { name: "New order", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Order Entry" }),
+  ).toBeVisible();
+
+  await page.getByRole("button", { name: "Add customer", exact: true }).click();
+  const customer = page.getByRole("dialog", { name: "Add customer" });
+  await customer.getByLabel("Business name").fill("Dispatch Test Foundry");
+  await customer.getByRole("button", { name: "Add to this dispatch" }).click();
+  await expect(customer).toHaveCount(0);
+  await expect(
+    page.getByRole("combobox", { name: "Customer 1" }),
+  ).not.toHaveValue("");
+
+  await page.getByRole("button", { name: "Add supplier", exact: true }).click();
+  const supplier = page.getByRole("dialog", { name: "Add supplier" });
+  await supplier.getByLabel("Business name").fill("Dispatch Test Mine");
+  await supplier.getByLabel("Mine number").fill("WORK-21");
+  await supplier.getByLabel("Mine name").fill("Test Mine 21");
+  await supplier.getByRole("button", { name: "Add to this dispatch" }).click();
+  await expect(supplier).toHaveCount(0);
+
+  await page.getByRole("textbox", { name: "Vehicle number 1" }).fill("KCS-900");
+  await page.getByRole("textbox", { name: "Truck weight 1" }).fill("10.005");
+  await page.getByRole("textbox", { name: "Purchase rate 1" }).fill("3.00");
+  await page.getByRole("textbox", { name: "Sell rate 1" }).fill("5.00");
+  await page.getByRole("button", { name: "Add all orders" }).click();
+  await expect(page.getByRole("status")).toContainText("1 order saved.");
+
+  let order = page.getByRole("row", { name: /KCS-900/ });
+  await expect(order).toContainText(/30\.02/);
+  await expect(order).toContainText(/50\.03/);
+  await expect(order).toContainText(/20\.01/);
+  const slip = await order
+    .getByRole("link", { name: "Slip PDF" })
+    .getAttribute("href");
+  expect(slip).toBeTruthy();
+  const response = await page.request.get(slip!);
+  expect(response.ok()).toBe(true);
+  expect(response.headers()["content-type"]).toMatch(/application\/pdf/);
+  expect((await response.body()).subarray(0, 4).toString()).toBe("%PDF");
+
+  await order.getByRole("link", { name: "Edit", exact: true }).click();
+  await page
+    .getByRole("textbox", { name: "Vehicle number", exact: true })
+    .fill("KCS-901");
+  await page.getByRole("button", { name: "Save changes" }).click();
+  order = page.getByRole("row", { name: /KCS-901/ });
+  await expect(order).toContainText(/20\.01/);
+
+  await order.getByRole("link", { name: "Void order", exact: true }).click();
+  await page
+    .getByRole("textbox", { name: "Reason for voiding" })
+    .fill("Browser test correction");
+  await page.getByRole("button", { name: "Void order", exact: true }).click();
+  await expect(page.getByRole("status")).toHaveText("Dispatch saved.");
+  await expect(page.getByRole("row", { name: /KCS-901/ })).toHaveCount(0);
+});

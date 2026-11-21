@@ -1,4 +1,4 @@
-import { CalendarDays, ChevronDown, CircleUserRound } from "lucide-react";
+import { CalendarDays, ChevronDown, CircleUserRound, Plus } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { signOut } from "@/app/(auth)/actions";
@@ -7,9 +7,11 @@ import {
   permissionForDestination,
 } from "@/components/workspace/navigation";
 import { DesktopSidebar, MobileSidebar } from "@/components/workspace/sidebar";
+import { Button } from "@/components/ui/button";
 import { can } from "@/domain/permissions";
 import { messages } from "@/i18n";
 import { auth } from "@/i18n/messages/auth-en";
+import { orders } from "@/i18n/messages/orders-en";
 import { requireActor } from "@/server/auth/request-context";
 import { getDatabase } from "@/server/db/client";
 import { readWorkspaceDate } from "@/server/settings/company";
@@ -39,6 +41,14 @@ export default async function WorkspaceLayout({
             <CalendarDays aria-hidden="true" size={17} />
             {today}
           </span>
+          {can(actor.roleCode, "orders.create") && (
+            <Button asChild size="sm">
+              <Link href="/orders" aria-label={orders.newOrder}>
+                <Plus aria-hidden="true" size={16} />
+                <span className="hidden sm:inline">{orders.newOrder}</span>
+              </Link>
+            </Button>
+          )}
           <details className="account-menu">
             <summary aria-label={auth.profile}>
               <CircleUserRound aria-hidden="true" size={21} />

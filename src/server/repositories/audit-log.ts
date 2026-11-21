@@ -35,30 +35,40 @@ function safeSnapshot(snapshot: AuditSnapshot | undefined) {
   );
 }
 
-// Construct snapshots from the affected record's approved fields before calling
-// this repository. Keep a mutating action and its audit entry in the same tx.
+function auditRow(event: AuditEvent): Prisma.AuditLogCreateManyInput {
+  if (event.ipAddress && !isIP(event.ipAddress)) {
+    throw new TypeError("Audit event requires a valid source IP address.");
+  }
+  return {
+    actorId: event.actor.type === "USER" ? event.actor.id : undefined,
+    actorType: event.actor.type,
+    area: event.area,
+    action: event.action,
+    targetType: event.targetType,
+    targetId: event.targetId,
+    requestId: event.requestId,
+    ipAddress: event.ipAddress,
+    outcome: event.outcome,
+    before: safeSnapshot(event.before),
+    after: safeSnapshot(event.after),
+  };
+}
+
+// Construct snapshots from the affected record's approved fields. Keep the
+// business changes and their audit entries in the same transaction.
 export async function appendAuditEvent(
   tx: Prisma.TransactionClient,
   event: AuditEvent,
 ) {
-  if (event.ipAddress && !isIP(event.ipAddress)) {
-    throw new TypeError("Audit event requires a valid source IP address.");
-  }
-
   return tx.auditLog.create({
-    data: {
-      actorId: event.actor.type === "USER" ? event.actor.id : undefined,
-      actorType: event.actor.type,
-      area: event.area,
-      action: event.action,
-      targetType: event.targetType,
-      targetId: event.targetId,
-      requestId: event.requestId,
-      ipAddress: event.ipAddress,
-      outcome: event.outcome,
-      before: safeSnapshot(event.before),
-      after: safeSnapshot(event.after),
-    },
+    data: auditRow(event),
     select: { id: true },
   });
+}
+
+export function appendAuditEvents(
+  tx: Prisma.TransactionClient,
+  events: readonly AuditEvent[],
+) {
+  return tx.auditLog.createMany({ data: events.map(auditRow) });
 }

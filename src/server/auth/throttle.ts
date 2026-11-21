@@ -8,6 +8,7 @@ const policies = {
   login: { windowMs: 15 * 60_000, identityLimit: 6, ipLimit: 60 },
   reset: { windowMs: 60 * 60_000, identityLimit: 3, ipLimit: 30 },
   credential: { windowMs: 15 * 60_000, identityLimit: 6, ipLimit: 60 },
+  export: { windowMs: 5 * 60_000, identityLimit: 50, ipLimit: 300 },
 } as const;
 
 function makeRateLimitKey() {

@@ -616,6 +616,10 @@ button:not(:disabled) {
     gap: 0.75rem;
   }
 
+  .workspace-label {
+    display: none;
+  }
+
   .workspace-main {
     padding-block-start: 1.75rem;
   }

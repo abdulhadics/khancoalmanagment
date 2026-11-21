@@ -29,3 +29,13 @@ Open a supplier's record to add or edit mines. Set an active mine as default if 
 Open **Settings** to update the company name, contact details, and logo used on documents. Choose the currency label, weight label, date format, and grouping style used for amounts. Changes to an order or voucher prefix apply to future numbers.
 
 Use **Bank and cash accounts** to add or rename a payment option. Deactivate accounts that staff should stop selecting. Previously issued records keep their original account details.
+
+## Truck dispatches
+
+Open **Order Entry** or use **New order** in the header. Select the dispatch date and generate the number of rows you need. Choose a customer, supplier, and mine for each truck. Enter the vehicle number, weight, and rates available to your role. Expand **Bilty and notes** to record a slip reference or instructions.
+
+Use **Same supplier for all** and **Same mine for all** when a batch uses one source. **Copy last row down** copies the trip details into a new row with a blank bilty number. Press Tab to move between fields. Ctrl+Enter adds a row. Confirm a repeated vehicle when it is making another trip on the same date.
+
+Choose **Add all orders** to save the batch. Correct any highlighted fields and resubmit with the same form. The Accountant or Owner can price and post the Operator's pending dispatches.
+
+Use **Orders for selected date** to review the saved dispatches. Open **Slip PDF** for one dispatch or **Print day report** for the selected date. **Edit** opens the fields allowed by your role. **Duplicate** copies a dispatch into a new form. Owners can void a dispatch with a reason while retaining its order number and audit history.
