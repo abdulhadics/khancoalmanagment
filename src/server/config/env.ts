@@ -88,6 +88,6 @@ export function readEnvironment(
   return {
     ...parsed.data,
     APP_ORIGIN:
-      parsed.data.APP_ORIGIN ?? `http://localhost:${parsed.data.APP_PORT}`,
+      parsed.data.APP_ORIGIN ?? `http://127.0.0.1:${parsed.data.APP_PORT}`,
   };
 }

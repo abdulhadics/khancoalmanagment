@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { GET as health } from "../../src/app/healthz/route";
 import { GET as ready } from "../../src/app/readyz/route";
@@ -8,7 +8,7 @@ describe("deployment configuration", () => {
   it("uses local defaults with the database optional", () => {
     expect(readEnvironment({})).toEqual({
       DEPLOYMENT_ENV: "development",
-      APP_ORIGIN: "http://localhost:3000",
+      APP_ORIGIN: "http://127.0.0.1:3000",
       APP_PORT: 3000,
     });
   });
@@ -27,7 +27,7 @@ describe("deployment configuration", () => {
 
   it("uses the configured port in the default local origin", () => {
     expect(readEnvironment({ APP_PORT: "3010" }).APP_ORIGIN).toBe(
-      "http://localhost:3010",
+      "http://127.0.0.1:3010",
     );
   });
 
@@ -78,10 +78,15 @@ describe("application status", () => {
     await expect(response.json()).resolves.toEqual({ status: "ok" });
   });
 
-  it("reports unready before the database is wired", async () => {
-    const response = ready();
-    expect(response.status).toBe(503);
-    expect(response.headers.get("Cache-Control")).toBe("no-store");
-    await expect(response.json()).resolves.toEqual({ status: "not_ready" });
+  it("reports unready when there is no configured database", async () => {
+    vi.stubEnv("DATABASE_URL", undefined);
+    try {
+      const response = await ready();
+      expect(response.status).toBe(503);
+      expect(response.headers.get("Cache-Control")).toBe("no-store");
+      await expect(response.json()).resolves.toEqual({ status: "not_ready" });
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 });
