@@ -4,14 +4,17 @@ import {
   requirePermission,
   type PermissionActor,
 } from "@/domain/permissions";
-import { Prisma, type PrismaClient } from "@/generated/prisma/client";
-import { getCashMovementTotals } from "../repositories/cash-movement";
-import { getPartyRollupTotals } from "../repositories/party-ledger-rollups";
 import {
-  readMonthlySales,
-  readSalesSummary,
-  type SalesTotals,
-} from "../reporting/sales-facts";
+  Prisma,
+  type OrderStatus,
+  type PaymentDirection,
+  type PaymentStatus,
+  type PrismaClient,
+} from "@/generated/prisma/client";
+import { getCashMovementTotals } from "../repositories/cash-movement";
+import { getOutstandingBalances } from "../repositories/party-ledger-rollups";
+import { businessDateConditions } from "../reporting/period";
+import { readSalesTimeline, type SalesTotals } from "../reporting/sales-facts";
 import { readDocumentDisplayPreferences } from "../settings/company";
 import {
   chartMonths,
@@ -31,73 +34,77 @@ const emptySales: SalesTotals = {
   profit: "0.00",
 };
 
-function dateRange({ from, to }: DashboardBounds) {
-  return {
-    gte: from ? parseBusinessDate(from) : undefined,
-    lte: parseBusinessDate(to),
-  };
-}
-
 async function readRecentOrders(
   tx: Prisma.TransactionClient,
-  where: Prisma.OrderWhereInput,
+  actor: PermissionActor,
+  bounds: DashboardBounds,
 ) {
-  const orders = await tx.order.findMany({
-    where,
-    orderBy: [{ businessDate: "desc" }, { ordinal: "desc" }],
-    take: activityLimit,
-    select: {
-      id: true,
-      orderNo: true,
-      businessDate: true,
-      vehicleNo: true,
-      status: true,
-      customer: { select: { name: true } },
-      currentRevision: { select: { weight: true } },
-    },
-  });
-  return orders.map(({ businessDate, customer, currentRevision, ...order }) => {
-    if (!currentRevision) throw new Error("Dispatch revision is missing.");
-    return {
-      ...order,
-      date: businessDate.toISOString().slice(0, 10),
-      customerName: customer.name,
-      weight: currentRevision.weight.toFixed(3),
-    };
-  });
+  const conditions = businessDateConditions(
+    Prisma.sql`dispatch.business_date`,
+    bounds,
+  );
+  conditions.push(
+    can(actor.roleCode, "orders.view")
+      ? Prisma.sql`dispatch.status <> 'VOIDED'`
+      : Prisma.sql`dispatch.status = 'POSTED'`,
+  );
+  if (actor.roleCode === "OPERATOR") {
+    conditions.push(Prisma.sql`dispatch.created_by_id = ${actor.userId}::uuid`);
+  }
+  return tx.$queryRaw<
+    Array<{
+      id: string;
+      orderNo: string;
+      date: string;
+      customerName: string;
+      vehicleNo: string;
+      weight: string;
+      status: OrderStatus;
+    }>
+  >`
+    SELECT dispatch.id, dispatch.order_no AS "orderNo", dispatch.status::text,
+      to_char(dispatch.business_date, 'YYYY-MM-DD') AS date,
+      dispatch.vehicle_no AS "vehicleNo", customer.name AS "customerName", revision.weight::text
+    FROM orders AS dispatch
+    JOIN customers AS customer ON customer.id = dispatch.customer_id
+    JOIN order_revisions AS revision
+      ON revision.order_id = dispatch.id AND revision.revision_no = dispatch.current_revision_no
+    WHERE ${Prisma.join(conditions, " AND ")}
+    ORDER BY dispatch.business_date DESC, dispatch.ordinal DESC
+    LIMIT ${activityLimit}
+  `;
 }
 
 async function readRecentTransactions(
   tx: Prisma.TransactionClient,
   bounds: DashboardBounds,
 ) {
-  const vouchers = await tx.payment.findMany({
-    where: { businessDate: dateRange(bounds) },
-    orderBy: [{ businessDate: "desc" }, { ordinal: "desc" }],
-    take: activityLimit,
-    select: {
-      id: true,
-      voucherNo: true,
-      businessDate: true,
-      direction: true,
-      amount: true,
-      status: true,
-      customer: { select: { name: true } },
-      supplier: { select: { name: true } },
-    },
-  });
-  return vouchers.map(
-    ({ businessDate, customer, supplier, amount, ...voucher }) => {
-      const party = customer ?? supplier;
-      if (!party) throw new Error("Voucher is missing its issued party.");
-      return {
-        ...voucher,
-        date: businessDate.toISOString().slice(0, 10),
-        partyName: party.name,
-        amount: amount.toFixed(2),
-      };
-    },
+  const conditions = businessDateConditions(
+    Prisma.sql`voucher.business_date`,
+    bounds,
   );
+  return tx.$queryRaw<
+    Array<{
+      id: string;
+      voucherNo: string;
+      date: string;
+      partyName: string;
+      direction: PaymentDirection;
+      amount: string;
+      status: PaymentStatus;
+    }>
+  >`
+    SELECT voucher.id, voucher.voucher_no AS "voucherNo",
+      to_char(voucher.business_date, 'YYYY-MM-DD') AS date,
+      COALESCE(customer.name, supplier.name) AS "partyName",
+      voucher.direction::text, voucher.amount::text, voucher.status::text
+    FROM payments AS voucher
+    LEFT JOIN customers AS customer ON customer.id = voucher.customer_id
+    LEFT JOIN suppliers AS supplier ON supplier.id = voucher.supplier_id
+    WHERE ${Prisma.join(conditions, " AND ")}
+    ORDER BY voucher.business_date DESC, voucher.ordinal DESC
+    LIMIT ${activityLimit}
+  `;
 }
 
 async function readDispatchDashboard(
@@ -110,20 +117,21 @@ async function readDispatchDashboard(
     businessDate: parseBusinessDate(today),
     status: { not: "VOIDED" },
   } satisfies Prisma.OrderWhereInput;
+  const bounds = { from: today, to: today };
   const [measures, recentOrders, preferences] = await Promise.all([
     tx.orderRevision.aggregate({
       where: { currentFor: { some: where } },
       _count: true,
       _sum: { weight: true },
     }),
-    readRecentOrders(tx, where),
+    readRecentOrders(tx, actor, bounds),
     readDocumentDisplayPreferences(tx),
   ]);
   return {
     scope: "dispatch" as const,
     today,
     period: "today" as const,
-    bounds: { from: today, to: today },
+    bounds,
     totals: {
       trucks: measures._count,
       weight: measures._sum.weight?.toFixed(3) ?? emptySales.weight,
@@ -133,85 +141,67 @@ async function readDispatchDashboard(
   };
 }
 
-function readSummaries(
-  tx: Prisma.TransactionClient,
-  { bounds, presets }: ReturnType<typeof parseDashboardFilters>,
-) {
-  const selected = readSalesSummary(tx, bounds);
-  const summary = (range: DashboardBounds) =>
-    range.from === bounds.from && range.to === bounds.to
-      ? selected
-      : readSalesSummary(tx, range);
-  return Promise.all([
-    selected,
-    summary(presets.today),
-    summary(presets.month),
-    summary(presets.year),
-    summary(presets.all),
-  ]);
-}
-
 async function readFinancialDashboard(
   tx: Prisma.TransactionClient,
   actor: PermissionActor,
   filters: ReturnType<typeof parseDashboardFilters>,
 ) {
   requirePermission(actor, "dashboard.financial");
-  const { today, period, bounds } = filters;
+  const { today, period, bounds, presets } = filters;
   const months = chartMonths(bounds.to);
+  const windows = [
+    ["selected", bounds],
+    ["today", presets.today],
+    ["month", presets.month],
+    ["year", presets.year],
+    ["all", presets.all],
+  ] as const;
   const [
-    [totals, todayTotals, month, year, all],
-    monthlySales,
+    timeline,
     cash,
-    customers,
-    suppliers,
+    balances,
     companyCounts,
     recentOrders,
     transactions,
     preferences,
   ] = await Promise.all([
-    readSummaries(tx, filters),
-    readMonthlySales(tx, { from: `${months[0]}-01`, to: bounds.to }),
+    readSalesTimeline(tx, windows, { from: `${months[0]}-01`, to: bounds.to }),
     getCashMovementTotals(tx, { from: bounds.from, through: bounds.to }),
-    getPartyRollupTotals(
-      tx,
-      "customer",
-      Prisma.sql`SELECT id FROM customers`,
-      bounds.to,
-    ),
-    getPartyRollupTotals(
-      tx,
-      "supplier",
-      Prisma.sql`SELECT id FROM suppliers`,
-      bounds.to,
-    ),
+    getOutstandingBalances(tx, bounds.to),
     tx.customer.groupBy({ by: ["isActive"], _count: true }),
-    readRecentOrders(tx, {
-      businessDate: dateRange(bounds),
-      status: can(actor.roleCode, "orders.view") ? { not: "VOIDED" } : "POSTED",
-    }),
+    readRecentOrders(tx, actor, bounds),
     can(actor.roleCode, "account.view")
       ? readRecentTransactions(tx, bounds)
       : null,
     readDocumentDisplayPreferences(tx),
   ]);
-  const byMonth = new Map(monthlySales.map((value) => [value.month, value]));
+  function totalsFor(key: (typeof windows)[number][0]) {
+    const totals = timeline.totals.get(key);
+    if (!totals) throw new Error("Dashboard sales window is missing.");
+    return totals;
+  }
   return {
     scope: "financial" as const,
     today,
     period,
     bounds,
-    totals,
-    summary: { today: todayTotals, month, year, all },
-    monthly: months.map(
-      (month) => byMonth.get(month) ?? { ...emptySales, month },
-    ),
+    totals: totalsFor("selected"),
+    summary: {
+      today: totalsFor("today"),
+      month: totalsFor("month"),
+      year: totalsFor("year"),
+      all: totalsFor("all"),
+    },
+    monthly: months.map((month) => ({
+      ...(timeline.months.get(month) ?? emptySales),
+      month,
+    })),
     cash,
     companies: {
       active: companyCounts.find(({ isActive }) => isActive)?._count ?? 0,
       total: companyCounts.reduce((total, row) => total + row._count, 0),
     },
-    balances: { receivable: customers.due, payable: suppliers.due },
+    balances,
     recentOrders,
     transactions,
     preferences,

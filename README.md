@@ -1,6 +1,6 @@
 # KhanCoalSupplier
 
-KhanCoalSupplier is a coal-supply workspace for recording truck dispatches, customer receipts, supplier payments, and balances in Pakistan. The workspace includes staff access, customer and supplier records, company and bank settings, dated opening balances, bulk dispatch entry, receipts, payments, printable slips and vouchers, and five sales and party reports with PDF and CSV exports.
+KhanCoalSupplier is a coal-supply workspace for recording truck dispatches, customer receipts, supplier payments, and balances in Pakistan. It includes a dashboard, staff access, customer and supplier ledgers, bulk dispatch entry, payment vouchers, five sales and party reports, and Owner administration.
 
 ## Run locally on Windows
 
@@ -44,6 +44,8 @@ Run the native PostgreSQL integration checks with `./scripts/test-postgres-windo
 
 Set `RUN_BROWSER_TESTS=1` after `npm.cmd run build` to include the Edge sign-in and staff-access workflow in the same isolated database run.
 
+Use `npm.cmd test -- --coverage` for unit coverage. Set `RUN_INTEGRATION_COVERAGE=1` before running the native PostgreSQL checks to collect integration coverage. The reports are written to `coverage/unit` and `coverage/integration`.
+
 ## Project documentation
 
 - [Functional specification](docs/SPEC.md)
@@ -51,5 +53,8 @@ Set `RUN_BROWSER_TESTS=1` after `npm.cmd run build` to include the Edge sign-in 
 - [Data model](docs/DATA_MODEL.md) and [permissions](docs/PERMISSIONS.md)
 - [Threat model](docs/THREAT_MODEL.md) and [test plan](docs/TEST_PLAN.md)
 - [Security controls](docs/SECURITY.md) and [user guide](docs/USER_GUIDE.md)
+- [Windows Server runbook](docs/RUNBOOK.md) and [backup and recovery](docs/BACKUP_RESTORE.md)
+- [HTTP routes and service boundaries](docs/API.md), [security checklist](docs/SECURITY_CHECKLIST.md), and [performance rehearsal](docs/PERFORMANCE.md)
 - [Delivery milestones](docs/DELIVERY_PLAN.md)
 - [Requirements traceability](docs/TRACEABILITY.md)
+- [Roadmap](docs/ROADMAP.md)

@@ -8,6 +8,7 @@ import {
   transitionCheque,
 } from "../../src/server/account/payments";
 import {
+  readAccountFormCatalog,
   readAccountFormOptions,
   readAccountWorkspace,
   readPaymentPartyBalance,
@@ -184,6 +185,21 @@ describe("account read models on PostgreSQL", () => {
       code: supplier.code,
       balance: "155.17",
     });
+    const catalog = await readAccountFormCatalog(database, accountant);
+    expect(catalog.payment.parties).toContainEqual({
+      id: supplier.id,
+      name: supplier.name,
+      code: supplier.code,
+    });
+    await expect(
+      readPaymentPartyBalance(
+        database,
+        accountant,
+        "OUT",
+        supplier.id,
+        catalog.payment.businessDate,
+      ),
+    ).resolves.toMatchObject({ balance: "155.17" });
 
     const issue = (fields: Record<string, unknown>) =>
       createPayment(database, accountant, context, {

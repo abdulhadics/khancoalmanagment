@@ -23,4 +23,4 @@ Audit records identify the actor and request, record the outcome, and capture se
 - Unit tests cover deployment configuration, role policy, and TOTP vectors and tamper rejection.
 - Native PostgreSQL integration tests cover login expiry and throttling, staff authorization and revocation, password changes, TOTP replay prevention, and reset token lifetime and single-use redemption.
 - The Edge workflow checks first-use sign-in, staff creation, permitted navigation, restricted pages, and session revocation.
-- Windows Server TLS and service rehearsal, production SMTP delivery, data retention sign-off, backup recovery verification, and final ASVS evidence remain release gates.
+- The encrypted backup and recovery drill passed on native Windows PostgreSQL. Windows Server service and TLS rehearsal, real SMTP delivery, the scheduled backup under the deployment account, retention sign-off, and the final security evidence remain release gates.

@@ -52,7 +52,7 @@ export default async function WorkspaceLayout({
             </Button>
           )}
           <details className="account-menu">
-            <summary aria-label={auth.profile}>
+            <summary aria-label={auth.profileMenu(actor.displayName)}>
               <CircleUserRound aria-hidden="true" size={21} />
               <span>{actor.displayName}</span>
               <ChevronDown aria-hidden="true" size={15} />

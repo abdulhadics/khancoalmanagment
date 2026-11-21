@@ -75,7 +75,7 @@ describe("deployment configuration", () => {
 
 describe("application status", () => {
   it("reports liveness without cacheable details", async () => {
-    const response = health();
+    const response = await health(new Request("http://127.0.0.1:3000/healthz"));
     expect(response.status).toBe(200);
     expect(response.headers.get("Cache-Control")).toBe("no-store");
     await expect(response.json()).resolves.toEqual({ status: "ok" });
@@ -84,7 +84,7 @@ describe("application status", () => {
   it("reports unready when there is no configured database", async () => {
     vi.stubEnv("DATABASE_URL", undefined);
     try {
-      const response = await ready();
+      const response = await ready(new Request("http://127.0.0.1:3000/readyz"));
       expect(response.status).toBe(503);
       expect(response.headers.get("Cache-Control")).toBe("no-store");
       await expect(response.json()).resolves.toEqual({ status: "not_ready" });

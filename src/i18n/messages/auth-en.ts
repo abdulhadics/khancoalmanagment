@@ -42,6 +42,7 @@ export const auth = {
   signOut: "Sign out",
   signOutAll: "Sign out of all devices",
   profile: "Profile",
+  profileMenu: (name: string) => `${name}, profile menu`,
   security: "Account security",
   deviceSessions: "Device sessions",
   staffManagement: "Staff accounts",

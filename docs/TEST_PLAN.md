@@ -46,6 +46,14 @@ Run a seeded test at 100,000+ orders and a headroom run at 500,000 orders and 10
 
 Verify WCAG 2.1 AA through automated checks and manual keyboard, visible focus, dialog, screen reader, zoom/reflow and contrast testing. Cover desktop, tablet and phone. Report checks for the latest two Chrome, Edge, Firefox and Safari versions. Run native Safari verification on an available Apple platform in addition to Playwright WebKit.
 
+The accessibility browser spec scans 28 desktop screens, six phone-width screens and two open dialogs with the axe-core WCAG 2.0 and 2.1 A and AA rules. It also checks horizontal reflow at 390 px, the skip link and keyboard opening, Escape and focus restoration for mobile navigation and Quick Receive. Run it against the local test environment with `npm run test:e2e:prepared -- tests/e2e/accessibility.spec.ts`.
+
 With synthetic data on Windows Server, verify that one service starts after reboot and recovers from process failure. Run the scheduled encrypted backup and observe retention settings. Restore a copy in a designated test database, verify the identity/recovery runbook, compare counts and financial results and record measured RPO and RTO against 24 hours and 4 hours. Verify the update and rollback paths using previous and current builds.
 
-At each milestone record commands, exit status, test summaries and known gaps. At release, map every accepted requirement to code and test evidence. Record planned, passing, failing or explicitly deferred results and the evidence reference. Planning status is pending implementation.
+At each milestone record commands, exit status, test summaries and known gaps. At release, map every accepted requirement to code and test evidence. Record planned, passing, failing or explicitly deferred results and the evidence reference.
+
+## Local test evidence
+
+The Windows run passed 73 unit tests, 79 native PostgreSQL integration tests, and six Edge workflows. The Edge workflows included all 36 automated accessibility scans and the mobile keyboard checks.
+
+Combined V8 coverage for `src/domain` and `src/server`, merged by source location, was 85.98% of statements, 88.47% of lines, and 76.73% of branches. The money module reached 100% on all four V8 measures. Party ledger, cash movement, and balance rollup modules still have uncovered branches. Full ledger coverage remains a release gate.

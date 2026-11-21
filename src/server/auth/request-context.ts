@@ -1,9 +1,12 @@
-import { randomUUID } from "node:crypto";
 import { isIP } from "node:net";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
 import { readEnvironment } from "../config/env";
+import {
+  internalRequestIdHeader,
+  requestIdFromHeader,
+} from "../observability/requests";
 import { readSessionCookie } from "./cookies";
 import { getSession } from "./session";
 
@@ -31,5 +34,9 @@ export async function getRequestContext() {
   const proxyAddress = request.get("x-kc-client-ip");
   const ip =
     deployed && proxyAddress && isIP(proxyAddress) ? proxyAddress : undefined;
-  return { requestId: randomUUID(), ip, ipAddress: ip };
+  return {
+    requestId: requestIdFromHeader(request.get(internalRequestIdHeader)),
+    ip,
+    ipAddress: ip,
+  };
 }

@@ -7,15 +7,14 @@ import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/domain/number-display";
 import type { PaymentDirection, PaymentMethod } from "@/generated/prisma/enums";
 import { account as t } from "@/i18n/messages/account-en";
-import type { readAccountFormOptions } from "@/server/account/workspace";
+import type { PaymentFormOptions } from "@/server/account/workspace";
 import { previewPartyBalance, recordPayment } from "./actions";
 import type { PaymentFormState } from "./form-state";
 
-type Options = Awaited<ReturnType<typeof readAccountFormOptions>>;
 type Preferences = { currencySymbol: string; numberFormat: string };
 type Props = {
   direction: PaymentDirection;
-  options: Options;
+  options: PaymentFormOptions;
   preferences: Preferences;
   initialKey: string;
   initialParty?: string;
@@ -102,17 +101,18 @@ function PaymentDraft({
       ? accounts[0].id
       : "";
   const selected = options.parties.find(({ id }) => id === partyId);
+  const catalogBalance =
+    date === options.businessDate ? selected?.balance : undefined;
   const balance =
-    date === options.businessDate
-      ? selected?.balance
-      : lookup?.id === partyId && lookup.businessDate === date
-        ? lookup.balance
-        : undefined;
+    catalogBalance ??
+    (lookup?.id === partyId && lookup.businessDate === date
+      ? lookup.balance
+      : undefined);
   const issue = state.issue;
   const invalid = (field: string) => issue?.field === field || undefined;
 
   useEffect(() => {
-    if (!partyId || date === options.businessDate || date.length !== 10) return;
+    if (!partyId || catalogBalance !== undefined || date.length !== 10) return;
     let current = true;
     void previewPartyBalance(direction, partyId, date)
       .then((result) => {
@@ -122,7 +122,7 @@ function PaymentDraft({
     return () => {
       current = false;
     };
-  }, [date, direction, options.businessDate, partyId]);
+  }, [catalogBalance, date, direction, partyId]);
 
   useEffect(() => {
     if (!dirty || pending) return;
@@ -176,7 +176,7 @@ function PaymentDraft({
           <span>
             {date === options.businessDate ? t.balance : t.datedBalance}
           </span>
-          <strong className="tabular-nums">
+          <strong className="tabular-nums" aria-live="polite">
             {balance !== undefined
               ? formatCurrency(balance, preferences)
               : selected

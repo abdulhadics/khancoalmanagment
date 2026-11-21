@@ -62,9 +62,13 @@ export function RecentOrders({
                 <tr key={order.id}>
                   <th scope="row">
                     {mayPrint ? (
-                      <Link href={`/orders/${order.id}/slip`}>
+                      <a
+                        href={`/orders/${order.id}/slip`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
                         {order.orderNo}
-                      </Link>
+                      </a>
                     ) : (
                       order.orderNo
                     )}
@@ -127,9 +131,13 @@ export function RecentTransactions({
               {transactions.map((voucher) => (
                 <tr key={voucher.id}>
                   <th scope="row">
-                    <Link href={`/account/vouchers/${voucher.id}`}>
+                    <a
+                      href={`/account/vouchers/${voucher.id}`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
                       {voucher.voucherNo}
-                    </Link>
+                    </a>
                   </th>
                   <td>
                     <ActivityDate

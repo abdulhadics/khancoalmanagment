@@ -23,7 +23,11 @@ function readTestAdminUrl() {
   );
 }
 
-function runNpm(script: string, environment: NodeJS.ProcessEnv) {
+function runNpm(
+  script: string,
+  environment: NodeJS.ProcessEnv,
+  scriptArguments: string[] = [],
+) {
   const npm = process.env.npm_execpath;
   if (!npm) {
     throw new Error(
@@ -31,10 +35,15 @@ function runNpm(script: string, environment: NodeJS.ProcessEnv) {
     );
   }
 
-  const child = spawnSync(process.execPath, [npm, "run", script], {
-    env: environment,
-    stdio: "inherit",
-  });
+  const forwarded = scriptArguments.length ? ["--", ...scriptArguments] : [];
+  const child = spawnSync(
+    process.execPath,
+    [npm, "run", script, ...forwarded],
+    {
+      env: environment,
+      stdio: "inherit",
+    },
+  );
   if (child.error || child.status !== 0) {
     throw new Error(`The ${script} command failed.`);
   }
@@ -66,7 +75,11 @@ async function testAgainstFreshDatabase() {
     };
 
     runNpm("db:migrate", environment);
-    runNpm("test:integration:prepared", environment);
+    runNpm(
+      "test:integration:prepared",
+      environment,
+      process.env.RUN_INTEGRATION_COVERAGE === "1" ? ["--coverage"] : [],
+    );
     if (process.env.RUN_BROWSER_TESTS === "1") {
       runNpm("test:e2e:prepared", environment);
     }

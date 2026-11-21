@@ -9,5 +9,10 @@ export default defineConfig({
     fileParallelism: false,
     testTimeout: 15_000,
     hookTimeout: 15_000,
+    coverage: {
+      include: ["src/domain/**/*.ts", "src/server/**/*.ts"],
+      reportsDirectory: "coverage/integration",
+      reporter: ["text-summary", "json"],
+    },
   },
 });

@@ -6,6 +6,7 @@ import { PermissionDenied } from "../../src/domain/permissions";
 import { hashPassword } from "../../src/server/auth/password";
 import type { SessionActor } from "../../src/server/auth/session";
 import { makePrisma } from "../../src/server/db/connect";
+import { readDocumentForPrint } from "../../src/server/documents/print-data";
 import {
   readDailyDispatch,
   readDispatchSlip,
@@ -22,8 +23,9 @@ const request = { requestId: randomUUID(), ipAddress: "192.0.2.135" };
 async function staff(
   db: Database,
   role: SessionActor["roleCode"],
+  suffix = tag,
 ): Promise<SessionActor> {
-  const username = `doc-${role.toLowerCase()}-${tag}`;
+  const username = `doc-${role.toLowerCase()}-${suffix}`;
   const user = await db.user.create({
     data: {
       username,
@@ -61,6 +63,37 @@ async function staff(
 }
 
 describe("dispatch export permissions and accounting snapshots", () => {
+  it("retries an adapter serialization conflict with a fresh authorized snapshot", async () => {
+    const db = makePrisma(process.env.INTEGRATION_DATABASE_URL!);
+    try {
+      const accountant = await staff(db, "ACCOUNTANT", `${tag}-retry`);
+      let attempts = 0;
+      const result = await readDocumentForPrint(
+        db,
+        accountant,
+        "orders.print",
+        request,
+        now,
+        async (tx) => {
+          attempts++;
+          if (attempts === 1) {
+            await tx.$executeRaw`DO $$ BEGIN
+              RAISE serialization_failure USING MESSAGE = 'Fixture serialization conflict';
+            END $$`;
+          }
+          return tx.user.findUniqueOrThrow({
+            where: { id: accountant.userId },
+            select: { id: true },
+          });
+        },
+      );
+      expect(result.id).toBe(accountant.userId);
+      expect(attempts).toBe(2);
+    } finally {
+      await db.$disconnect();
+    }
+  });
+
   it("uses archived letterhead, scopes day rows, and excludes purchasing fields for Operators", async () => {
     const connection = process.env.INTEGRATION_DATABASE_URL;
     if (!connection)

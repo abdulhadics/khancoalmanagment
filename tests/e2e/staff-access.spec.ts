@@ -105,7 +105,7 @@ test("Owner creates a Viewer whose access is restricted and revoked when disable
   }
 
   await page.goto("/");
-  await page.getByLabel("Profile", { exact: true }).click();
+  await page.getByLabel("Browser Test Owner, profile menu", { exact: true }).click();
   await page.getByRole("button", { name: "Sign out", exact: true }).click();
   await expect(page).toHaveURL(/\/login$/);
 });
@@ -379,6 +379,7 @@ test("Owner records a quick receipt and a supplier payment with voucher PDFs", a
   await pay
     .getByRole("combobox", { name: "Supplier", exact: true })
     .selectOption(supplierId);
+  await expect(pay.getByText(/900\.00/)).toBeVisible();
   await pay
     .getByRole("combobox", { name: "Bank or cash account", exact: true })
     .selectOption({ label: "Cash" });

@@ -12,3 +12,4 @@
 - Added five sales and party reports, shared reconciliation queries, and role-controlled PDF and CSV exports.
 - Added the dashboard with period filters, report-matched sales totals, monthly comparisons, outstanding balances, and recent activity.
 - Added Owner-only accounting period controls, audit history, reconciliation tools, and encrypted database backup and recovery.
+- Added Windows release staging and installer preflight, lightweight request diagnostics, and broader accessibility and performance checks. Reduced repeated dashboard and account ledger queries.

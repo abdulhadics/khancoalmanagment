@@ -1,6 +1,8 @@
 import { spawn } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
-import { join } from "node:path";
+import { isAbsolute, join } from "node:path";
+import { parseEnv } from "node:util";
 
 import nextEnvironment from "@next/env";
 
@@ -15,6 +17,14 @@ function serve() {
   }
 
   const projectRoot = process.cwd();
+  const protectedConfig = process.env.KHANCOAL_CONFIG_FILE;
+  if (protectedConfig) {
+    if (!isAbsolute(protectedConfig)) {
+      throw new Error("KHANCOAL_CONFIG_FILE must be an absolute file path.");
+    }
+    const values = parseEnv(readFileSync(protectedConfig, "utf8"));
+    for (const [key, value] of Object.entries(values)) process.env[key] = value;
+  }
   nextEnvironment.loadEnvConfig(projectRoot, mode === "dev");
   const config = readEnvironment();
 

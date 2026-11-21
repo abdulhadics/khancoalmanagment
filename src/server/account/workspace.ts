@@ -6,12 +6,13 @@ import {
   PaymentMethod,
   PaymentStatus,
   Prisma,
+  type BankCategory,
   type PrismaClient,
 } from "@/generated/prisma/client";
 import { getCashMovementTotals } from "../repositories/cash-movement";
 import {
+  getOutstandingBalances,
   getPartyRollups,
-  getPartyRollupTotals,
   partyLedgerRollupQuery,
 } from "../repositories/party-ledger-rollups";
 import { readDocumentDisplayPreferences } from "../settings/company";
@@ -42,6 +43,12 @@ export type AccountFilters = {
 };
 
 type PartyIdentity = { id: string; code: string; name: string };
+
+export type PaymentFormOptions = {
+  businessDate: string;
+  parties: (PartyIdentity & { balance?: string })[];
+  banks: { id: string; name: string; category: BankCategory }[];
+};
 
 export type PendingPartyRow = PartyIdentity & {
   isActive: boolean;
@@ -215,20 +222,9 @@ async function readTransactions(
 }
 
 async function readAccountSummary(tx: Prisma.TransactionClient, asOf: string) {
-  const [cash, customers, suppliers, vouchers, uncleared] = await Promise.all([
+  const [cash, balances, vouchers, uncleared] = await Promise.all([
     getCashMovementTotals(tx, { through: asOf }),
-    getPartyRollupTotals(
-      tx,
-      "customer",
-      Prisma.sql`SELECT id FROM customers`,
-      asOf,
-    ),
-    getPartyRollupTotals(
-      tx,
-      "supplier",
-      Prisma.sql`SELECT id FROM suppliers`,
-      asOf,
-    ),
+    getOutstandingBalances(tx, asOf),
     tx.payment.count({
       where: { businessDate: { lte: parseBusinessDate(asOf) } },
     }),
@@ -244,8 +240,7 @@ async function readAccountSummary(tx: Prisma.TransactionClient, asOf: string) {
   ]);
   return {
     ...cash,
-    receivable: customers.due,
-    payable: suppliers.due,
+    ...balances,
     voucherCount: vouchers,
     unclearedReceived:
       uncleared
@@ -294,6 +289,35 @@ function directionParty(direction: PaymentDirection): AccountParty {
   throw new RangeError("Unknown payment direction.");
 }
 
+const activeBankOptions = {
+  where: { isActive: true },
+  orderBy: [{ nameKey: "asc" }, { id: "asc" }],
+  select: { id: true, name: true, category: true },
+} satisfies Prisma.BankFindManyArgs;
+
+const activePartyOptions = {
+  where: { isActive: true },
+  orderBy: [{ nameKey: "asc" }, { id: "asc" }],
+  select: { id: true, code: true, name: true },
+} satisfies Prisma.CustomerFindManyArgs & Prisma.SupplierFindManyArgs;
+
+export async function readAccountFormCatalog(
+  database: PrismaClient,
+  actor: PermissionActor,
+) {
+  requirePermission(actor, "account.manage");
+  const businessDate = todayBusinessDate();
+  const [customers, suppliers, banks] = await database.$transaction([
+    database.customer.findMany(activePartyOptions),
+    database.supplier.findMany(activePartyOptions),
+    database.bank.findMany(activeBankOptions),
+  ]);
+  return {
+    receipt: { businessDate, parties: customers, banks },
+    payment: { businessDate, parties: suppliers, banks },
+  } satisfies Record<"receipt" | "payment", PaymentFormOptions>;
+}
+
 export async function readAccountFormOptions(
   database: PrismaClient,
   actor: PermissionActor,
@@ -314,11 +338,7 @@ export async function readAccountFormOptions(
         LEFT JOIN (${partyLedgerRollupQuery(party, matches, date)}) AS rollups ON rollups."partyId" = choice.id
         WHERE choice.is_active ORDER BY choice.name_key, choice.id
       `),
-        tx.bank.findMany({
-          where: { isActive: true },
-          orderBy: [{ nameKey: "asc" }, { id: "asc" }],
-          select: { id: true, name: true, category: true },
-        }),
+        tx.bank.findMany(activeBankOptions),
       ]);
       return { businessDate: date, parties, banks };
     },

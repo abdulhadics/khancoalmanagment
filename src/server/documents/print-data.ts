@@ -37,12 +37,15 @@ function isSnapshotConflict(error: unknown) {
   if (!error || typeof error !== "object" || !("code" in error)) return false;
   if (error.code === "P2034") return true;
   const meta = "meta" in error ? error.meta : null;
+  if (error.code !== "P2010" || !meta || typeof meta !== "object") return false;
+  if ("code" in meta && meta.code === "40001") return true;
+  const driver = "driverAdapterError" in meta ? meta.driverAdapterError : null;
+  const cause = driver instanceof Error ? driver.cause : null;
   return (
-    error.code === "P2010" &&
-    meta &&
-    typeof meta === "object" &&
-    "code" in meta &&
-    meta.code === "40001"
+    !!cause &&
+    typeof cause === "object" &&
+    "kind" in cause &&
+    cause.kind === "TransactionWriteConflict"
   );
 }
 
@@ -75,11 +78,12 @@ export async function readDocumentForPrint<T>(
       },
       { isolationLevel: "RepeatableRead" },
     );
-  try {
-    return await run();
-  } catch (error) {
-    // A concurrent session touch can precede the row lock on a new snapshot.
-    if (!isSnapshotConflict(error)) throw error;
-    return run();
+  for (let retries = 2; ; retries--) {
+    try {
+      return await run();
+    } catch (error) {
+      // The adapter can report a concurrent session touch as a snapshot conflict.
+      if (retries === 0 || !isSnapshotConflict(error)) throw error;
+    }
   }
 }

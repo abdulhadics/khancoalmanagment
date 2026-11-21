@@ -16,13 +16,18 @@ export type SalesTotals = {
   profit: string;
 };
 
-export const summedSalesMeasures = Prisma.sql`
-  COALESCE(SUM(trucks), 0)::bigint AS trucks,
-  COALESCE(SUM(weight), 0)::text AS weight,
-  COALESCE(SUM(sales), 0)::text AS sales,
-  COALESCE(SUM(purchases), 0)::text AS purchases,
-  COALESCE(SUM(sales) - SUM(purchases), 0)::text AS profit
-`;
+function salesMeasureAggregate(textDecimals: boolean) {
+  const decimalCast = textDecimals ? Prisma.sql`::text` : Prisma.empty;
+  return Prisma.sql`
+    COALESCE(SUM(trucks), 0)::bigint AS trucks,
+    COALESCE(SUM(weight), 0)${decimalCast} AS weight,
+    COALESCE(SUM(sales), 0)${decimalCast} AS sales,
+    COALESCE(SUM(purchases), 0)${decimalCast} AS purchases,
+    COALESCE(SUM(sales) - SUM(purchases), 0)${decimalCast} AS profit
+  `;
+}
+
+export const summedSalesMeasures = salesMeasureAggregate(true);
 
 // Both sides contribute their own signed posted amount. Count each dispatch
 // and its weight once, from the sales side, including zero-rated dispatches.
@@ -96,4 +101,55 @@ export async function readMonthlySales(
     ORDER BY month
   `;
   return rows.map((row) => ({ ...row, trucks: Number(row.trucks) }));
+}
+
+type SalesWindow = ReportPeriod & { to: string };
+
+// The selected period, presets, and chart overlap. Roll up once by the journal
+// date, then use that compact result to compute each window and month.
+export async function readSalesTimeline<Key extends string>(
+  tx: Prisma.TransactionClient,
+  windows: ReadonlyArray<readonly [key: Key, dates: SalesWindow]>,
+  chart: Required<SalesWindow>,
+) {
+  const through = windows.reduce(
+    (latest, [, window]) => (window.to > latest ? window.to : latest),
+    chart.to,
+  );
+  const ranges = Prisma.join(
+    windows.map(
+      ([key, { from, to }]) =>
+        Prisma.sql`(${key}::text, ${from ?? null}::date, ${to}::date)`,
+    ),
+  );
+  const rows = await tx.$queryRaw<
+    (Omit<SalesTotals, "trucks"> & {
+      key: string;
+      kind: "window" | "month";
+      trucks: bigint;
+    })[]
+  >`
+    WITH daily AS MATERIALIZED (
+      SELECT business_date, ${salesMeasureAggregate(false)}
+      FROM (${signedSalesFacts({ to: through })}) AS facts
+      GROUP BY business_date
+    )
+    SELECT 'window' AS kind, requested.key, ${summedSalesMeasures}
+    FROM (VALUES ${ranges}) AS requested(key, start_day, end_day)
+    LEFT JOIN daily ON daily.business_date <= requested.end_day
+      AND (requested.start_day IS NULL OR daily.business_date >= requested.start_day)
+    GROUP BY requested.key
+    UNION ALL
+    SELECT 'month', to_char(date_trunc('month', business_date), 'YYYY-MM'), ${summedSalesMeasures}
+    FROM daily
+    WHERE business_date BETWEEN ${chart.from}::date AND ${chart.to}::date
+    GROUP BY date_trunc('month', business_date)
+  `;
+  const totals = new Map<string, SalesTotals>();
+  const months = new Map<string, SalesTotals>();
+  for (const { key, kind, trucks, ...amounts } of rows) {
+    const collection = kind === "window" ? totals : months;
+    collection.set(key, { ...amounts, trucks: Number(trucks) });
+  }
+  return { totals, months };
 }

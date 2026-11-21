@@ -17,7 +17,7 @@ import { formatCurrency, formatDecimal } from "@/domain/number-display";
 import { can } from "@/domain/permissions";
 import { account as t } from "@/i18n/messages/account-en";
 import {
-  readAccountFormOptions,
+  readAccountFormCatalog,
   readAccountWorkspace,
   type AccountFilters,
 } from "@/server/account/workspace";
@@ -345,10 +345,9 @@ export default async function AccountPage({
     },
   };
   const db = getDatabase();
-  const [workspace, receipt, payment] = await Promise.all([
+  const [workspace, { receipt, payment }] = await Promise.all([
     readAccountWorkspace(db, actor, filters),
-    readAccountFormOptions(db, actor, "IN"),
-    readAccountFormOptions(db, actor, "OUT"),
+    readAccountFormCatalog(db, actor),
   ]);
   const { asOf, summary, customers, suppliers, transactions, preferences } =
     workspace;
