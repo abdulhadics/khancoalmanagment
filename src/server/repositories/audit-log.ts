@@ -23,14 +23,26 @@ export type AuditEvent = {
 };
 
 const privateField =
-  /password|credential|secret|token|cookie|authorization|hash|digest|keymaterial|recovery|email|phone|address|notes|contactperson/i;
+  /password|credential|secret|token|cookie|authorization|hash|digest|keymaterial|recovery|email|phone|address|notes|contactperson|totpkey|smtpkey/i;
 
-function safeSnapshot(snapshot: AuditSnapshot | undefined) {
-  if (!snapshot) return undefined;
+export function safeAuditSnapshot(
+  snapshot: Prisma.JsonValue | AuditSnapshot | undefined,
+) {
+  if (!snapshot || typeof snapshot !== "object" || Array.isArray(snapshot))
+    return undefined;
 
   return Object.fromEntries(
     Object.entries(snapshot).filter(
-      ([field]) => !privateField.test(field.replaceAll(/[^a-z]/gi, "")),
+      (entry): entry is [string, string | number | boolean | null] => {
+        const [field, value] = entry;
+        return (
+          !privateField.test(field.replaceAll(/[^a-z]/gi, "")) &&
+          (value === null ||
+            typeof value === "string" ||
+            typeof value === "number" ||
+            typeof value === "boolean")
+        );
+      },
     ),
   );
 }
@@ -49,8 +61,8 @@ function auditRow(event: AuditEvent): Prisma.AuditLogCreateManyInput {
     requestId: event.requestId,
     ipAddress: event.ipAddress,
     outcome: event.outcome,
-    before: safeSnapshot(event.before),
-    after: safeSnapshot(event.after),
+    before: safeAuditSnapshot(event.before),
+    after: safeAuditSnapshot(event.after),
   };
 }
 

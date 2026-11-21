@@ -67,7 +67,7 @@ Use required FKs with restrictive deletes for masters and historical records. De
 | Rates | `NUMERIC(12,2)` | Non-negative decimal text with at most two fractional digits |
 | Money | `NUMERIC(14,2)` | Two decimal places for individual amounts. Aggregate in exact decimals and widen report totals. |
 | Business date | `DATE` | ISO date as entered by staff in Asia/Karachi. Today's date and month/year boundaries use that timezone. |
-| System timestamp | `TIMESTAMPTZ` | Instant stored and transported in UTC |
+| System timestamp | `TIMESTAMPTZ` | Instant stored and transported in UTC. App PostgreSQL sessions use UTC independently of the host timezone. The audit viewer displays these instants in Asia/Karachi. |
 
 Use Decimal arithmetic with sufficient precision for full-width multiplication and aggregates. Reject unsupported scales and out-of-range values before writing. Calculate buy and sell separately with round-half-up to two decimals. Profit is the rounded sale minus the rounded purchase. For example, a 10.005-ton load at a purchase rate of 3.00 yields a 30.02 buy amount. Validate the stored snapshots in DDL. Use a decimal string in JSON and format at the final presentation boundary. Ton, Tonne, and MT display the same metric-tonne basis. Preserve that basis across changes to the unit label.
 

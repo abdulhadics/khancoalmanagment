@@ -7,6 +7,27 @@ export class PeriodLockedError extends Error {
   }
 }
 
+export async function lockBusinessMonth(
+  tx: Prisma.TransactionClient,
+  month: string,
+) {
+  await tx.$executeRaw`
+    INSERT INTO period_locks (month)
+    VALUES (${month}::date)
+    ON CONFLICT (month) DO NOTHING
+  `;
+  const [gate] = await tx.$queryRaw<
+    { isMonthLocked: boolean; isYearLocked: boolean }[]
+  >`
+    SELECT is_month_locked AS "isMonthLocked", is_year_locked AS "isYearLocked"
+    FROM period_locks
+    WHERE month = ${month}::date
+    FOR UPDATE
+  `;
+  if (!gate) throw new Error("Accounting period gate could not be read.");
+  return gate;
+}
+
 export async function lockOpenBusinessMonths(
   tx: Prisma.TransactionClient,
   dates: readonly Date[],
@@ -17,18 +38,8 @@ export async function lockOpenBusinessMonths(
 
   // Lock and unlock commands must acquire these same rows in month order.
   for (const month of monthKeys) {
-    await tx.$executeRaw`
-      INSERT INTO period_locks (month)
-      VALUES (${month}::date)
-      ON CONFLICT (month) DO NOTHING
-    `;
-    const [gate] = await tx.$queryRaw<{ locked: boolean }[]>`
-      SELECT is_month_locked OR is_year_locked AS locked
-      FROM period_locks
-      WHERE month = ${month}::date
-      FOR UPDATE
-    `;
-    if (!gate) throw new Error("Accounting period gate could not be read.");
-    if (gate.locked) throw new PeriodLockedError(month);
+    const gate = await lockBusinessMonth(tx, month);
+    if (gate.isMonthLocked || gate.isYearLocked)
+      throw new PeriodLockedError(month);
   }
 }

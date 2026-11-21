@@ -4,9 +4,11 @@ import { Button } from "@/components/ui/button";
 import { parseBusinessDate } from "@/domain/business-date";
 import { formatDocumentDate } from "@/domain/document-format";
 import { formatCurrency, formatDecimal } from "@/domain/number-display";
+import { can } from "@/domain/permissions";
 import { messages } from "@/i18n";
 import { dashboard as t } from "@/i18n/messages/dashboard-en";
 import { orders } from "@/i18n/messages/orders-en";
+import { readLatestBackup } from "@/server/admin/backups";
 import { requireActor } from "@/server/auth/request-context";
 import {
   DashboardPeriodError,
@@ -14,6 +16,7 @@ import {
   readDashboard,
 } from "@/server/dashboard/workspace";
 import { getDatabase } from "@/server/db/client";
+import { BackupStatus } from "./admin/backups/status";
 import { RecentOrders, RecentTransactions } from "./dashboard-view/activity";
 import { MonthlyChart } from "./dashboard-view/monthly-chart";
 import styles from "./dashboard-view/dashboard.module.css";
@@ -178,13 +181,18 @@ export default async function DashboardPage({
     from: field("from"),
     to: field("to"),
   };
-  const { data, invalid } = await readDashboard(database, actor, filters).then(
-    (data) => ({ data, invalid: false }),
-    async (error: unknown) => {
-      if (!(error instanceof DashboardPeriodError)) throw error;
-      return { data: await readDashboard(database, actor), invalid: true };
-    },
-  );
+  const [{ data, invalid }, latestBackup] = await Promise.all([
+    readDashboard(database, actor, filters).then(
+      (data) => ({ data, invalid: false }),
+      async (error: unknown) => {
+        if (!(error instanceof DashboardPeriodError)) throw error;
+        return { data: await readDashboard(database, actor), invalid: true };
+      },
+    ),
+    can(actor.roleCode, "admin.backups")
+      ? readLatestBackup(database, actor)
+      : null,
+  ]);
   const { from, to } = data.bounds;
   const dateParams = new URLSearchParams({ to });
   if (from) dateParams.set("from", from);
@@ -253,6 +261,7 @@ export default async function DashboardPage({
           {t.invalid}
         </p>
       )}
+      {latestBackup && <BackupStatus latest={latestBackup} showLink />}
       <SummaryCards data={data} />
       {data.scope === "financial" && <FinancialPanels data={data} />}
       <div className={styles.activity}>

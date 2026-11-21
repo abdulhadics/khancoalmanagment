@@ -67,3 +67,13 @@ Use **Customers Report** or **Suppliers Report** to see party balances. The clos
 The dashboard opens to **This month**. Use the period selector to change the date range. Presets run through the current Karachi business date and **This week** starts on Monday. Use **Custom range** to enter both dates. The monthly chart shows twelve months through the selected end date. Expand **View monthly totals** to read exact amounts.
 
 Receivables and supplier dues show outstanding amounts through the selected end date. Cash out and balance in hand cover movements within the selected period. Company counts reflect the current directory. The recent order and voucher lists follow the selected dates and staff permissions. Operators see their own dispatch count, weight, and orders for the current business day.
+
+## Owner administration
+
+Open **Settings** to find **Accounting periods**, **Audit log**, **Accounting integrity**, and **Database backups**.
+
+Choose a month or year and give a reason before locking or reopening it. A year lock and an individual month lock can both apply. Changes to either lock appear in the audit log. Use the log's actor, action, outcome, and date filters to review events.
+
+Use **Accounting integrity** to compare postings to their orders and vouchers or check a party's closing balance. The results identify records to investigate without modifying them.
+
+Use **Download backup** to create an encrypted database archive. Recent jobs show their dates, status, and archive checksums. The Owner dashboard warns when a successful backup is missing or more than 48 hours old. Follow the [backup and recovery procedure](BACKUP_RESTORE.md) when restoring.

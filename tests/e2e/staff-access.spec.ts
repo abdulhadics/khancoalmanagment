@@ -259,7 +259,13 @@ test("Owner adds dispatch parties in place and posts an exact-priced truck", asy
     page.getByRole("link", { name: "Today", exact: true }),
   ).toHaveAttribute("aria-current", "page");
   const summary = page.getByLabel("Dispatch and sales totals");
-  await expect(summary.getByText(/50\.03/).first()).toBeVisible();
+  const salesTotal = summary
+    .getByText("Total sales", { exact: true })
+    .locator("..")
+    .locator("dd")
+    .first();
+  await expect(salesTotal).toBeVisible();
+  const dashboardSales = await salesTotal.innerText();
   await expect(page.getByRole("row", { name: /KCS-900/ })).toBeVisible();
   await page.getByText("View monthly totals", { exact: true }).click();
   await expect(
@@ -274,6 +280,14 @@ test("Owner adds dispatch parties in place and posts an exact-priced truck", asy
   await page.getByRole("link", { name: "Custom range" }).click();
   await expect(page.getByRole("button", { name: "Apply dates" })).toBeVisible();
   await page.setViewportSize({ width: 1280, height: 720 });
+  await page.getByRole("link", { name: "Sales report", exact: true }).click();
+  await expect(
+    page
+      .locator("dl")
+      .getByText("Sales", { exact: true })
+      .locator("..")
+      .locator("dd"),
+  ).toHaveText(dashboardSales);
 
   await page.goto("/orders");
   await order.getByRole("link", { name: "Edit", exact: true }).click();

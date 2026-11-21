@@ -14,6 +14,8 @@
 *.tsbuildinfo
 *.log
 *.dump
+*.dump.age
+*.dump.age.partial
 *.backup
 *.pem
 *.key

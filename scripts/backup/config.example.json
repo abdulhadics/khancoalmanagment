@@ -1,0 +1,13 @@
+{
+  "host": "127.0.0.1",
+  "port": 5432,
+  "database": "khancoal",
+  "user": "khancoal_backup",
+  "postgresBin": "C:\\Program Files\\PostgreSQL\\17\\bin",
+  "ageExecutable": "C:\\Program Files\\age\\age.exe",
+  "passwordFile": "D:\\KhanCoal\\protected\\backup-pgpass.conf",
+  "archiveDirectory": "D:\\KhanCoal\\archives",
+  "mirrorDirectory": "E:\\KhanCoal\\archives",
+  "ageRecipient": "REPLACE_WITH_OWNER_AGE_PUBLIC_RECIPIENT",
+  "timeoutSeconds": 1800
+}

@@ -1,7 +1,8 @@
 import { defineConfig } from "@playwright/test";
 import "./tests/integration/setup";
 
-const origin = "http://127.0.0.1:3147";
+const port = 3147;
+const origin = `http://127.0.0.1:${port}`;
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -13,12 +14,12 @@ export default defineConfig({
     channel: process.env.PLAYWRIGHT_CHROMIUM_CHANNEL ?? "msedge",
   },
   webServer: {
-    command: "npm run start",
+    command: `node node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port ${port}`,
     url: `${origin}/healthz`,
     reuseExistingServer: false,
     env: {
       APP_ORIGIN: origin,
-      APP_PORT: "3147",
+      APP_PORT: String(port),
       DEPLOYMENT_ENV: "development",
       DATABASE_URL: process.env.INTEGRATION_DATABASE_URL!,
       NEXT_TELEMETRY_DISABLED: "1",

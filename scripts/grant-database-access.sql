@@ -14,8 +14,10 @@ GRANT SELECT ON roles TO :"application_role";
 GRANT SELECT, INSERT, UPDATE ON
   users, user_credentials, sessions, auth_challenges, rate_limit_buckets,
   company_settings, banks, customers, suppliers, mines, orders, payments,
-  number_sequences, period_locks, idempotency_keys, backups
+  number_sequences, period_locks, idempotency_keys
 TO :"application_role";
+REVOKE INSERT, UPDATE ON backups FROM :"application_role";
+GRANT SELECT ON backups TO :"application_role";
 GRANT SELECT, INSERT ON
   document_profiles, order_revisions, cheque_events, ledger_entries, audit_logs
 TO :"application_role";

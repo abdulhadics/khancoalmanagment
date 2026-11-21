@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { can } from "@/domain/permissions";
 import { messages } from "@/i18n";
+import { administration } from "@/i18n/messages/admin-en";
 import { auth } from "@/i18n/messages/auth-en";
 import { settings } from "@/i18n/messages/settings-en";
 import { requireActor } from "@/server/auth/request-context";
@@ -62,6 +63,30 @@ export default async function SettingsPage() {
           }))}
         />
       </div>
+      <section
+        className={`${styles.panel} mt-4`}
+        aria-labelledby="settings-admin"
+      >
+        <div className={styles.panelHeading}>
+          <h2 id="settings-admin">{administration.title}</h2>
+        </div>
+        <div className="flex flex-wrap gap-3">
+          <Button asChild variant="outline">
+            <Link href="/admin/periods">{administration.period.title}</Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href="/admin/audit">{administration.audit.title}</Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href="/admin/integrity">
+              {administration.integrity.title}
+            </Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href="/admin/backups">{administration.backups}</Link>
+          </Button>
+        </div>
+      </section>
     </>
   );
 }

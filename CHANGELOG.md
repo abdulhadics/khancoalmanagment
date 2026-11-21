@@ -11,3 +11,4 @@
 - Added Sales Details, customer and supplier ledgers, running balances, and filtered PDF and CSV exports.
 - Added five sales and party reports, shared reconciliation queries, and role-controlled PDF and CSV exports.
 - Added the dashboard with period filters, report-matched sales totals, monthly comparisons, outstanding balances, and recent activity.
+- Added Owner-only accounting period controls, audit history, reconciliation tools, and encrypted database backup and recovery.
