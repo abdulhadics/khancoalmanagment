@@ -12,6 +12,10 @@ $ErrorActionPreference = 'Stop'
 $configItem = Get-Item -LiteralPath $ConfigPath
 if ($configItem.PSIsContainer) { throw 'Pass the path to the protected backup JSON file.' }
 $config = $configItem.FullName
+$settings = Get-Content -LiteralPath $config -Raw | ConvertFrom-Json
+if ($settings.objectMirror -and !$Credential) {
+    throw 'Cloud backup requires the network-enabled -Credential task option.'
+}
 $script = (Get-Item -LiteralPath (Join-Path $PSScriptRoot 'backup.ps1')).FullName
 $workingDirectory = (Get-Item -LiteralPath (Join-Path $PSScriptRoot '..')).FullName
 $powershell = Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'

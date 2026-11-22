@@ -269,17 +269,15 @@ async function drill(adminUrl, pgBin, ageBin) {
       port,
       postgresBin: pgBin,
     };
-    await writeFile(
-      backupConfig,
-      JSON.stringify({
-        ...settings,
-        database: source,
-        user: backupRole,
-        archiveDirectory,
-        mirrorDirectory,
-        ageRecipient: publicKey,
-      }),
-    );
+    const backupSettings = {
+      ...settings,
+      database: source,
+      user: backupRole,
+      archiveDirectory,
+      mirrorDirectory,
+      ageRecipient: publicKey,
+    };
+    await writeFile(backupConfig, JSON.stringify(backupSettings));
     await writeFile(
       restoreConfig,
       JSON.stringify({ ...settings, database: target, user: migrationRole }),
@@ -342,6 +340,69 @@ async function drill(adminUrl, pgBin, ageBin) {
     );
     assert.deepEqual(backupAudit, { actor_id: actorId, outcome: "SUCCESS" });
     await downloadAsOwner(sourceUrl, sourceClient, actor, backupConfig);
+
+    if (process.env.TEST_RCLONE_EXECUTABLE) {
+      const remote = path.join(root, "object-mirror");
+      const configFile = path.join(root, "rclone.conf");
+      await writeFile(
+        configFile,
+        `[qa]\ntype = alias\nremote = ${remote.replaceAll("\\", "/")}\n`,
+      );
+      const objectMirror = {
+        executable: process.env.TEST_RCLONE_EXECUTABLE,
+        configFile,
+        remotePath: "qa:backup/daily",
+      };
+      const scheduledArgs = [
+        ...shellArguments,
+        "scripts/backup.ps1",
+        "-ConfigPath",
+        backupConfig,
+      ];
+      await writeFile(
+        backupConfig,
+        JSON.stringify({ ...backupSettings, objectMirror }),
+      );
+      const mirrored = await run(powershell, scheduledArgs);
+      assert.equal(mirrored.code, 0, mirrored.stderr);
+      const mirroredId = mirrored.stdout.trim();
+      assert.match(mirroredId, archiveName);
+      assert.equal(
+        await sha256(path.join(remote, "backup", "daily", mirroredId)),
+        await sha256(path.join(archiveDirectory, mirroredId)),
+      );
+
+      objectMirror.executable = path.join(root, "missing-rclone.exe");
+      await writeFile(
+        backupConfig,
+        JSON.stringify({ ...backupSettings, objectMirror }),
+      );
+      const failed = await run(powershell, scheduledArgs);
+      assert.equal(failed.code, 3, failed.stderr);
+      const retainedId = failed.stdout.trim();
+      assert.match(retainedId, archiveName);
+      const { rows } = await sourceClient.query(
+        `
+        SELECT after->>'objectMirror' AS mirror, after->>'archiveId' AS name
+        FROM audit_logs WHERE action = 'backup.create' AND after->>'archiveId' IN ($1, $2)
+      `,
+        [mirroredId, retainedId],
+      );
+      assert.deepEqual(
+        Object.fromEntries(rows.map(({ name, mirror }) => [name, mirror])),
+        {
+          [mirroredId]: "succeeded",
+          [retainedId]: "failed",
+        },
+      );
+      assert.match(
+        await sha256(path.join(archiveDirectory, retainedId)),
+        /^[a-f0-9]{64}$/,
+      );
+      console.log(
+        "Scheduled cloud mirror verified. A simulated upload failure retained the primary archive and returned exit code 3.",
+      );
+    }
 
     const restoreArgs = [
       ...shellArguments,

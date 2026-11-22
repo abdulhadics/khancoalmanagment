@@ -1,5 +1,7 @@
 # SQLite handover decision and progress
 
+The current production decision prioritizes access from anywhere. Deploy the verified PostgreSQL application on an always-on host. Continue using this SQLite importer as the one-file data export and recovery rehearsal. [Hosted production setup](../README.md#hosted-production-for-access-from-anywhere)
+
 The client wants a single local database file and an off-machine copy of the business data. Use one Windows host as the writer. The installed app will write to a local `khancoal.db`. Staff on other office PCs can use the same app through their browsers. The database folder stays on the host. A cloud-synced folder can receive closed, encrypted snapshots for recovery. An office internet outage affects backup synchronization while local work can continue.
 
 ## Completed

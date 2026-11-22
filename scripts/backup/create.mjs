@@ -21,6 +21,7 @@ import {
   sha256,
   transaction,
 } from "./common.mjs";
+import { mirrorEncryptedArchive } from "./object-mirror.mjs";
 
 const dumpFailure = new MaintenanceError(
   "dump-failed",
@@ -79,6 +80,7 @@ async function finishJob(client, actor, id, archive, failureCode) {
         archiveId: archive.name,
         byteCount: archive.size,
         mirror: archive.mirror,
+        objectMirror: archive.objectMirror,
       });
       return;
     }
@@ -243,6 +245,16 @@ async function run() {
             signal,
           )
         : "not-configured";
+      archive.objectMirror = config.objectMirror
+        ? actor.id
+          ? "scheduled-only"
+          : await mirrorEncryptedArchive(
+              config.objectMirror,
+              path.join(directory, archive.name),
+              archive,
+              signal,
+            )
+        : "not-configured";
       await finishJob(client, actor, id, archive);
       await pruneArchives(directory).catch(() =>
         console.error(
@@ -253,6 +265,12 @@ async function run() {
         console.error(
           "The primary backup succeeded. Check the optional mirror destination.",
         );
+      if (archive.objectMirror === "failed") {
+        console.error(
+          "The primary backup succeeded. The cloud copy could not be verified.",
+        );
+        process.exitCode = 3;
+      }
       console.log(archive.name);
     } catch (error) {
       const failure = deadline.aborted

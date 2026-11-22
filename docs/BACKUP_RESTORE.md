@@ -17,6 +17,30 @@ The backup is one encrypted `.dump.age` file. It contains the PostgreSQL schema,
 
 Keep the latest archive for each of the 30 most recent successful backup days and the latest archive for each of the 12 most recent successful backup months. The selections can overlap. Keep extra archives from the last 48 hours so staff can finish a manual download. Retention only applies to files with the app's archive naming pattern in the configured folders. Backup jobs serialize across the app and Scheduler. A busy invocation exits with code `2`. If the optional mirror is offline, the primary backup can succeed and the audit event records the failed mirror. Check that the mirror receives new archives after reconnecting it.
 
+## Off-host cloud copy
+
+For the hosted production setup, use a client-owned private Cloudflare R2 Standard bucket. Keep public access disabled. Configure an R2 rclone remote under the backup service account using an object read/write key restricted to that bucket. Protect the rclone config with NTFS permissions. Keep the age private recovery identity outside the server and bucket. [R2 credentials](https://developers.cloudflare.com/r2/get-started/s3/) · [Configure rclone](https://developers.cloudflare.com/r2/examples/rclone/)
+
+Add the optional `objectMirror` block to the protected backup JSON. It can coexist with the local mirror. `remotePath` includes the rclone remote, bucket, and an archive prefix.
+
+```json
+{
+  "objectMirror": {
+    "executable": "C:\\Program Files\\rclone\\rclone.exe",
+    "configFile": "D:\\KhanCoal\\protected\\rclone.conf",
+    "remotePath": "khancoal-r2:khancoal-backups/daily"
+  }
+}
+```
+
+Register the schedule with `-Credential (Get-Credential)` for the limited network-enabled backup account. Owner downloads use the local archive. The scheduled worker uploads the encrypted file without replacing existing content, downloads it for a SHA-256 comparison, and records the result in the backup audit event. A cloud failure leaves the verified local archive available and sets task exit code `3`. Monitor the `objectMirror` audit field and rerun the scheduled task after resolving a failed upload.
+
+Apply a 30-day bucket lock and a 90-day expiry to `daily/` as the initial retention policy, subject to the client's record retention requirements. Configure usage alerts and monitor actual archive sizes and storage. The R2 Standard free allowance is 10 GB-month. At 90 retained daily snapshots, average compressed archive size determines whether usage remains within that allowance. [Pricing](https://developers.cloudflare.com/r2/pricing/) · [Bucket locks](https://developers.cloudflare.com/r2/buckets/bucket-locks/) · [Object lifecycles](https://developers.cloudflare.com/r2/buckets/object-lifecycles/)
+
+For acceptance, run the scheduled task and obtain its latest `succeeded` object mirror audit result. Download that object from a second machine, verify its SHA-256 against the protected backup audit record, and use the restore procedure below on an isolated database.
+
+The Windows round-trip test exercised the scheduled upload and checksum path using rclone against an isolated local destination. It also verified that an upload failure preserves the primary archive and returns exit code `3`. The live R2 bucket and target Windows schedule still require a deployment rehearsal. Set `TEST_RCLONE_EXECUTABLE` to an absolute rclone path to include this check in the Windows recovery drill.
+
 ## Restore an archived database
 
 1. Save the existing database and keep the application pointed at its original database until recovery verification is complete. Provision an empty PostgreSQL database with a new name from `template0`. Give ownership to a separate migration login with no superuser, role creation, database creation, or elevated role membership. Prepare a protected recovery JSON with that database and login and a password file matching the new database. Only `host`, `port`, `database`, `user`, `postgresBin`, `ageExecutable`, `passwordFile`, and optional `timeoutSeconds` are used for recovery.

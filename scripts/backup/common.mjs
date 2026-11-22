@@ -92,6 +92,23 @@ export async function readConfig(configPath, backup = false) {
   ) {
     throw failConfiguration();
   }
+  let objectMirror;
+  if (config.objectMirror !== undefined) {
+    const { executable, configFile, remotePath } = config.objectMirror ?? {};
+    if (
+      typeof remotePath !== "string" ||
+      !/^[a-zA-Z0-9][a-zA-Z0-9_-]*:[a-z0-9][a-z0-9-]*(?:\/[a-zA-Z0-9][a-zA-Z0-9_-]*)+$/.test(
+        remotePath,
+      )
+    ) {
+      throw failConfiguration();
+    }
+    objectMirror = {
+      executable: absolutePath(executable),
+      configFile: absolutePath(configFile),
+      remotePath,
+    };
+  }
   return {
     ...settings,
     ageRecipient: config.ageRecipient,
@@ -99,6 +116,7 @@ export async function readConfig(configPath, backup = false) {
     mirrorDirectory: config.mirrorDirectory
       ? absolutePath(config.mirrorDirectory)
       : undefined,
+    objectMirror,
   };
 }
 

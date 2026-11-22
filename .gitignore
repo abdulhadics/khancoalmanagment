@@ -26,5 +26,6 @@
 *.backup
 *.pem
 *.key
+rclone.conf
 /.vercel/
 next-env.d.ts

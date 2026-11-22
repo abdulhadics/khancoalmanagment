@@ -34,13 +34,19 @@ Production sign-in requires an HTTPS `APP_ORIGIN`, a 32-byte base64url `AUTH_ENC
 
 ## Handover on the client's Windows machine
 
-The current build runs with PostgreSQL. The planned SQLite edition is tracked in the [SQLite handover decision](docs/SQLITE_HANDOVER.md). The [handover review](docs/DELIVERY_PLAN.md#handover-review) covers the daily workflow, current tests and release status.
+The current build runs with PostgreSQL. The one-file SQLite export is covered in the [SQLite handover decision](docs/SQLITE_HANDOVER.md). The [handover review](docs/DELIVERY_PLAN.md#handover-review) covers the daily workflow, current tests and release status.
 
 Run the app and PostgreSQL on a client-owned Windows host with persistent local disk. Staff on the host can use the app in a browser. For multiple staff devices, use the LAN-only HTTPS setup and have them open the same app address. PostgreSQL listens on the host's loopback interface. This setup requires no Vercel or hosted database subscription.
 
 Use the [Windows installation runbook](docs/RUNBOOK.md) to install the services. Configure the [daily encrypted backup](docs/BACKUP_RESTORE.md), and keep a copy on a separate drive or another client-approved destination. Each `.dump.age` file contains the business records, schema, staff identities, and audit history at the time of backup. The running PostgreSQL database uses a data directory. The client keeps the decryption identity and deployment configuration separately and uses the documented Owner recovery step after restoring.
 
 Before handover, verify service startup after reboot, HTTPS from a staff device, and a scheduled backup restored into a separate database. Compare the restored dispatch, payment, and ledger totals and check the response times at the client's expected workload. [Capacity findings](docs/PERFORMANCE.md#22-november-local-500000-order-run)
+
+## Hosted production for access from anywhere
+
+Run the app and PostgreSQL on an always-on, client-owned Windows Server VM. Put Caddy in front of the app at one HTTPS address. Publish HTTPS and keep PostgreSQL and the Node port bound to loopback. Staff use their existing role-based sign-in in any supported browser. The client can retain a separate local SQLite export for portability.
+
+Schedule encrypted backups on the VM, retain a local copy, and mirror each verified daily archive to the client's private Cloudflare R2 bucket. Use the [Windows runbook](docs/RUNBOOK.md) and [cloud backup configuration](docs/BACKUP_RESTORE.md#off-host-cloud-copy). Before handing out the link, verify sign-in, a representative posting, expected-load performance, and a restore taken from the remote bucket.
 
 ## Deploy the web app on Vercel
 
