@@ -1,25 +1,14 @@
 import { randomUUID } from "node:crypto";
 
-import { hashPassword, newPasswordSchema } from "../src/server/auth/password";
+import { hashPassword } from "../src/server/auth/password";
 import { readEnvironment } from "../src/server/config/env";
 import { makePrisma } from "../src/server/db/connect";
 import { appendAuditEvent } from "../src/server/repositories/audit-log";
 
-class OwnerRecoveryError extends Error {}
-
-async function readPassword() {
-  let text = "";
-  process.stdin.setEncoding("utf8");
-  for await (const chunk of process.stdin) {
-    text += chunk;
-    if (text.length > 1024)
-      throw new OwnerRecoveryError("The password is too long.");
-  }
-  const password = newPasswordSchema.safeParse(text.replace(/\r?\n$/, ""));
-  if (!password.success)
-    throw new OwnerRecoveryError("Enter a password of 15 to 128 characters.");
-  return password.data;
-}
+import {
+  OwnerRecoveryError,
+  readRecoveryPassword,
+} from "./owner-recovery-input";
 
 async function run() {
   const [target, username] = process.argv.slice(2);
@@ -42,7 +31,7 @@ async function run() {
       "DATABASE_URL must match the named local recovery database.",
     );
   }
-  const passwordHash = await hashPassword(await readPassword());
+  const passwordHash = await hashPassword(await readRecoveryPassword());
   const database = makePrisma(DATABASE_URL);
   try {
     const requestId = randomUUID();

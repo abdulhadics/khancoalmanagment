@@ -10,6 +10,24 @@ On Windows with Node 22.18 and age 1.3.2, the encrypted snapshot restored commit
 
 ## Application migration
 
-The running application still uses PostgreSQL. Its database access includes PostgreSQL-specific SQL, transaction behavior, and schema constraints. The accounting migration will store currency as integer paisa and weight as integer thousandths of a tonne, checking individual values and aggregate bounds to keep totals exact. The port must cover atomic dispatch and payment writes, reversal and period rules, authentication, reports, and the import of any existing data.
+The running application still uses PostgreSQL. Its database access includes PostgreSQL-specific SQL, transaction behavior, and schema constraints. The SQLite schema and import command now copy an isolated, read-only PostgreSQL snapshot to a new `.db` file. The import stores currency as integer paisa and weight as integer thousandths of a tonne. It checks row counts, exact financial column totals, foreign keys, and SQLite integrity before publishing the file. Existing destination files are protected from replacement. The source is left intact.
 
-Before switching staff to SQLite, verify balances and report totals against PostgreSQL, test simultaneous staff submissions, and rehearse backup restore on another PC. Keep the PostgreSQL database available through migration and reconciliation. The backup copy is for recovery. Simultaneous cloud editing would require a separate synchronization design.
+The import preserves staff identities, settings, dispatch and payment history, journals, and audit records. It omits credentials and temporary authentication data. The initial schema adds append-only and ledger-source guards. The offline Owner recovery command prepares an audited temporary password for an existing active Owner in a verified SQLite-format copy with no existing credentials or sessions. App sign-in, atomic dispatch and payment writes, period rules, and report readers still need SQLite implementation and tests.
+
+A read-only rehearsal against the Windows localhost preview published one SQLite file in a separate private profile folder. The source remained online and continued to pass readiness checks. This preview held settings, a customer ledger entry, and audit history. An encrypted archive of the SQLite copy was restored in a separate local folder, and its existing Owner recovered audited temporary access. Synthetic integration data exercises the monetary boundary, destination collision, and Owner recovery guards separately.
+
+To rehearse an import, set `MIGRATION_SOURCE_DATABASE_URL` privately to the PostgreSQL source, create a protected local folder, and run the command below from the checkout. Use a new filename on a local filesystem that supports hard links, such as NTFS. The database is published only after verification. The command prints copied row counts and excluded table names. Keep this local database outside Git and outside the cloud-sync folder.
+
+```powershell
+node.exe scripts/import-postgres-to-sqlite.mjs 'D:\KhanCoal\data\khancoal-rehearsal.db'
+```
+
+Use the Owner recovery command on an offline imported or restored copy. Run these commands in PowerShell 7 so the password can be entered without echoing it. Supply the existing active Owner's username for that copy.
+
+```powershell
+$temporary = Read-Host 'Temporary Owner password' -MaskInput
+$temporary | node.exe --import tsx scripts/recover-sqlite-owner.ts 'D:\KhanCoal\data\khancoal-rehearsal.db' 'owner'
+Remove-Variable temporary
+```
+
+Before switching staff to SQLite, verify per-party ledger balances and report totals against PostgreSQL, test simultaneous staff submissions, and rehearse backup restore on another PC. Keep the PostgreSQL database available through migration and reconciliation. The cloud backup copy is for recovery. Simultaneous cloud editing would require a separate synchronization design.

@@ -4,7 +4,7 @@
 
 - Anonymous requests to Account, audit, PDF vouchers, and Sales CSV redirected to sign-in. The local sign-in response included content security policy, frame denial, MIME sniffing protection, and private no-store caching.
 - The isolated PostgreSQL suite passed 84 tests. The retention regression covers the expiry boundary, repeat execution, and preservation of current records and credentials. The daily task still needs to be registered on the client host.
-- PostgreSQL recovery restored the test payment and reconciled PKR 168.74. The SQLite snapshot restored committed WAL entries in a disposable database and excluded all six sensitive or short-lived tables. A synthetic credential marker was absent from the decrypted file bytes and stayed present in the source. The SQLite application and its Owner recovery are still being ported.
+- PostgreSQL recovery restored the test payment and reconciled PKR 168.74. The SQLite snapshot restored committed WAL entries in a disposable database and excluded all six sensitive or short-lived tables. A synthetic credential marker was absent from the decrypted file bytes and stayed present in the source. Offline SQLite Owner recovery passed locally. The browser sign-in flow still needs the SQLite port.
 - The production dependency audit reported zero vulnerabilities. A local Git history scan reported no secrets.
 - GitHub Actions passed on published commit `de25faf`. The current maintenance and recovery changes were checked locally. [Published CI run](https://github.com/abdulhadics/khancoalmanagment/actions/runs/45034119597)
 
