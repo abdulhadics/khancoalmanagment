@@ -7,6 +7,10 @@ export const auth = {
   working: "Please wait…",
   invalid: "Sign-in failed. Check your details or try again later.",
   unavailable: "The workspace is temporarily unavailable. Try again shortly.",
+  unavailableHeading: "Sign-in is unavailable",
+  unavailableHelp:
+    "Try again in a moment. If sign-in stays unavailable, contact your workspace administrator.",
+  retrySignIn: "Retry sign-in",
   change: "Set a new password",
   updatePassword: "Change password",
   currentPassword: "Current password",

@@ -1,6 +1,6 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
-import { isVercelDeployment } from "./server/config/env";
+import { isProductionDeployment } from "./server/config/env";
 import {
   internalRequestIdHeader,
   logRequest,
@@ -10,8 +10,7 @@ export function proxy(request: NextRequest) {
   const requestId = randomUUID();
   const nonce = randomBytes(18).toString("base64");
   const dev = process.env.NODE_ENV === "development";
-  const deployed =
-    isVercelDeployment() || process.env.DEPLOYMENT_ENV === "production";
+  const deployed = isProductionDeployment();
   const policy = [
     "default-src 'self'",
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${dev ? " 'unsafe-eval'" : ""}`,

@@ -116,6 +116,12 @@ export function isVercelDeployment(values: EnvironmentValues = process.env) {
   return values.VERCEL === "1" && values.VERCEL_ENV !== "development";
 }
 
+export function isProductionDeployment(
+  values: EnvironmentValues = process.env,
+) {
+  return isVercelDeployment(values) || values.DEPLOYMENT_ENV === "production";
+}
+
 export function readEnvironment(values: EnvironmentValues = process.env) {
   const parsed = environment.safeParse(
     isVercelDeployment(values)

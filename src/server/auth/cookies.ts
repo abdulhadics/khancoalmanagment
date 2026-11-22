@@ -1,9 +1,5 @@
 import { cookies } from "next/headers";
-import { readEnvironment } from "../config/env";
-
-function cookieSecurity() {
-  return readEnvironment().DEPLOYMENT_ENV === "production";
-}
+import { isProductionDeployment } from "../config/env";
 
 function names(secure: boolean) {
   return secure
@@ -12,18 +8,19 @@ function names(secure: boolean) {
 }
 
 export async function readSessionCookie() {
-  return (await cookies()).get(names(cookieSecurity()).session)?.value;
+  return (await cookies()).get(names(isProductionDeployment()).session)?.value;
 }
 
 export async function readChallengeCookie() {
-  return (await cookies()).get(names(cookieSecurity()).challenge)?.value;
+  return (await cookies()).get(names(isProductionDeployment()).challenge)
+    ?.value;
 }
 
 export async function setAuthCookie(
   kind: "session" | "challenge",
   token: string,
 ) {
-  const secure = cookieSecurity();
+  const secure = isProductionDeployment();
   const store = await cookies();
   const paths = { session: "/", challenge: "/login" };
   const other = kind === "session" ? "challenge" : "session";
@@ -42,7 +39,7 @@ export async function setAuthCookie(
 }
 
 export async function clearAuthCookies() {
-  const secure = cookieSecurity();
+  const secure = isProductionDeployment();
   const store = await cookies();
   store.set(names(secure).session, "", { secure, path: "/", maxAge: 0 });
   store.set(names(secure).challenge, "", { secure, path: "/login", maxAge: 0 });
