@@ -30,7 +30,7 @@ export default async function WorkspaceLayout({
 
   return (
     <div className="workspace">
-      <a className="skip-link" href="#main-content">
+      <a className="skip-link" href="#main-content" tabIndex={0}>
         {messages.common.skip}
       </a>
       <DesktopSidebar allowedRoutes={allowedRoutes} />

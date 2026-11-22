@@ -86,7 +86,11 @@ test("Owner can reopen a period and inspect administration pages on mobile", asy
     .getByRole("textbox", { name: "Action", exact: true })
     .fill("period.unlock");
   await page.getByRole("button", { name: "Filter events" }).click();
+  await expect(page).toHaveURL(
+    (url) => url.searchParams.get("action") === "period.unlock",
+  );
   const event = page.getByRole("row").filter({ hasText: "1994-01" });
+  await expect(event).toHaveCount(1);
   await expect(event).toContainText("period.unlock");
   await event.getByText("Event details", { exact: true }).click();
   await expect(

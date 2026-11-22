@@ -135,9 +135,9 @@ test("desktop modules and mobile controls meet automated WCAG 2.1 AA checks", as
   const fixture = await prepareWorkspace();
   const violations: { surface: string; rule: string; targets: unknown[] }[] =
     [];
-  async function scan(surface: string) {
+  async function scan(surface: string, scanPage = page) {
     await test.step(surface, async () => {
-      const result = await new AxeBuilder({ page })
+      const result = await new AxeBuilder({ page: scanPage })
         .withTags(wcag21AA)
         .analyze();
       for (const violation of result.violations) {
@@ -150,11 +150,23 @@ test("desktop modules and mobile controls meet automated WCAG 2.1 AA checks", as
     });
   }
 
-  await page.setViewportSize({ width: 1440, height: 900 });
-  await visit(page, "/forgot-password");
-  await scan("password recovery");
+  const desktopViewport = { width: 1440, height: 900 };
+  for (const [location, surface] of [
+    ["/forgot-password", "password recovery"],
+    ["/login", "sign in"],
+  ]) {
+    const publicPage = await page.context().newPage();
+    try {
+      await publicPage.setViewportSize(desktopViewport);
+      await visit(publicPage, location);
+      await scan(surface, publicPage);
+    } finally {
+      await publicPage.close();
+    }
+  }
+
+  await page.setViewportSize(desktopViewport);
   await visit(page, "/login");
-  await scan("sign in");
   await page.getByLabel("Email or username").fill(fixture.username);
   await page.getByLabel("Password", { exact: true }).fill(fixture.password);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();

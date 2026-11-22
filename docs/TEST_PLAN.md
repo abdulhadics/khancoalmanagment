@@ -63,7 +63,7 @@ At each milestone record commands, exit status, test summaries and known gaps. A
 
 ## Local test evidence
 
-The current Windows build passed lint, type-checking, the production build, 73 unit tests, and 83 native PostgreSQL integration tests.
+The 23 November Windows build passed lint, type-checking, the production build, 77 unit tests, and 85 native PostgreSQL integration tests. The Windows encrypted backup and restore drill reconciled the test payment, preserved the primary file on a simulated mirror failure, and verified the scheduled mirror against an isolated destination.
 
 The browser checks ran on Windows 11 Enterprise build 26300 with PostgreSQL 17.12 and Playwright 1.65.1.
 
@@ -78,4 +78,10 @@ The browser checks ran on Windows 11 Enterprise build 26300 with PostgreSQL 17.1
 
 Combined V8 coverage for `src/domain` and `src/server`, merged by source location, was 85.30% of statements, 87.70% of lines, and 76.55% of branches. The money module reached 100% on all four V8 measures. The PostgreSQL suite reached 100% of statements, branches, and functions in the party ledger, cash movement, and party balance rollup modules.
 
+On 23 November, Edge, Playwright Firefox, and Playwright WebKit each passed all seven workflows against isolated PostgreSQL databases. The suite covered desktop and mobile accessibility, period reopening and audit filtering, Sales lookup, Viewer access, opening balances, dispatch, payments, and voucher PDFs. The WebKit regression check confirmed keyboard focus reaches the skip navigation link.
+
 The usability checks cover opening and closing the large Sales party chooser by keyboard, preserving its selection across navigation, retaining an unsaved dispatch when the user cancels navigation, moving focus to an invalid dispatch field, and recovering from an interrupted balance lookup before saving a payment. Automated accessibility scans and keyboard tests complement the manual screen-reader and native Safari checks required for release.
+
+## 23 November Vercel verification
+
+The public service returned HTTP 200 on `/healthz` and HTTP 503 on `/readyz`. Sign-in rendered the retry panel. The Vercel response confirmed that the function moved from Washington to Singapore to match Neon. An isolated Vercel-mode smoke test with the other settings populated confirmed that a missing SMTP URL and sender leave the app unready and report only the safe field names in private logs. Verify hosted database access, Owner sign-in, and actual mail delivery after those settings are saved and the deployment is rebuilt.
