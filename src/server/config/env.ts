@@ -122,6 +122,15 @@ export function isProductionDeployment(
   return isVercelDeployment(values) || values.DEPLOYMENT_ENV === "production";
 }
 
+export class InvalidEnvironmentConfiguration extends Error {
+  constructor(
+    readonly fields: string[],
+    messages: string[],
+  ) {
+    super(`Invalid environment configuration. ${messages.join(" ")}`);
+  }
+}
+
 export function readEnvironment(values: EnvironmentValues = process.env) {
   const parsed = environment.safeParse(
     isVercelDeployment(values)
@@ -132,7 +141,10 @@ export function readEnvironment(values: EnvironmentValues = process.env) {
     const messages = parsed.error.issues.map(
       ({ path, message }) => `${path.join(".")}. ${message}`,
     );
-    throw new Error(`Invalid environment configuration. ${messages.join(" ")}`);
+    const fields = [
+      ...new Set(parsed.error.issues.map(({ path }) => path.join("."))),
+    ];
+    throw new InvalidEnvironmentConfiguration(fields, messages);
   }
   return {
     ...parsed.data,

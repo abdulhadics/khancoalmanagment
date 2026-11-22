@@ -95,6 +95,29 @@ describe("deployment configuration", () => {
 });
 
 describe("application status", () => {
+  it("keeps readiness failure details off the public response", async () => {
+    vi.stubEnv("VERCEL", "1");
+    vi.stubEnv("VERCEL_ENV", "production");
+    vi.stubEnv("DATABASE_URL", "mysql://test:example-secret@localhost/wrong");
+    const log = vi.spyOn(console, "info").mockImplementation(() => undefined);
+    try {
+      const response = await ready(
+        new Request("https://coal.example.test/readyz"),
+      );
+      expect(response.status).toBe(503);
+      await expect(response.json()).resolves.toEqual({ status: "not_ready" });
+      const line = String(log.mock.calls.at(-1)?.[0]);
+      expect(JSON.parse(line).diagnostic).toMatchObject({
+        reason: "configuration_invalid",
+        fields: expect.arrayContaining(["DATABASE_URL"]),
+      });
+      expect(line).not.toContain("example-secret");
+    } finally {
+      log.mockRestore();
+      vi.unstubAllEnvs();
+    }
+  });
+
   it("reports liveness without cacheable details", async () => {
     const response = await health(new Request("http://127.0.0.1:3000/healthz"));
     expect(response.status).toBe(200);

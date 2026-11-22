@@ -2,6 +2,10 @@ import { internalRequestIdHeader, requestIdFromHeader } from "./requests";
 
 type Probe = "liveness" | "readiness";
 type ProbeMetrics = { checks: number; failures: number; maxDurationMs: number };
+type ProbeResult =
+  | boolean
+  | { ready: true }
+  | { ready: false; reason: string; fields?: string[] };
 
 const initialMetrics = (): ProbeMetrics => ({
   checks: 0,
@@ -16,10 +20,15 @@ const processMetrics: Record<Probe, ProbeMetrics> = {
 export async function respondToProbe(
   request: Request,
   probe: Probe,
-  check: () => boolean | Promise<boolean>,
+  check: () => ProbeResult | Promise<ProbeResult>,
 ) {
   const started = performance.now();
-  const ok = await check();
+  const result = await check();
+  const ok = typeof result === "boolean" ? result : result.ready;
+  const diagnostic =
+    typeof result !== "boolean" && !result.ready
+      ? { reason: result.reason, fields: result.fields }
+      : undefined;
   const durationMs = Math.round(performance.now() - started);
   const status = probe === "liveness" ? "ok" : ok ? "ready" : "not_ready";
   const totals = processMetrics[probe];
@@ -35,6 +44,7 @@ export async function respondToProbe(
       ),
       probe,
       status,
+      ...(diagnostic && { diagnostic }),
       durationMs,
       ...totals,
     }),

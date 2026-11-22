@@ -63,7 +63,7 @@ Schedule encrypted backups on the VM, retain a local copy, and mirror each verif
 | `SMTP_URL`            | An external SMTP relay, such as an `smtps://` URL on port 465. URL-encode relay credentials.                                                                               |
 | `SMTP_FROM`           | The verified sender address provided by the relay                                                                                                                          |
 
-4. Deploy and verify `/readyz` returns HTTP 200. Sign in at `APP_ORIGIN`, change the temporary password, and enroll an authenticator. Test password reset, a PDF export, and a representative dispatch and payment before inviting staff.
+4. Deploy and verify `/healthz` and `/readyz` both return HTTP 200. If `/readyz` returns 503, open Vercel Runtime Logs and inspect the `diagnostic` field on the `health.probe` event. It reports invalid configuration field names, a missing database URL, an empty role catalog, or a failed query. The public endpoint returns the readiness status only. Sign in at `APP_ORIGIN`, change the temporary password, and enroll an authenticator. Test password reset, a PDF export, and a representative dispatch and payment before inviting staff.
 
 The in-app encrypted backup download and backup scheduler require the Windows Server setup. On Vercel, configure managed PostgreSQL backups and verify a restore in a separate database. Review the [capacity results](docs/PERFORMANCE.md#22-november-local-500000-order-run) before using the hosted app for live operations.
 
