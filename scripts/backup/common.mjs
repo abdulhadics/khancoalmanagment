@@ -9,17 +9,10 @@ import { pipeline } from "node:stream/promises";
 
 import pg from "pg";
 
+export { omittedData } from "./omitted-tables.mjs";
+
 export const archiveName = /^khancoal-(\d{8}T\d{9}Z)-[a-f0-9]{32}\.dump\.age$/;
 export const backupLock = "3091736130";
-
-export const omittedData = [
-  "user_credentials",
-  "sessions",
-  "auth_challenges",
-  "rate_limit_buckets",
-  "idempotency_keys",
-  "backups",
-];
 
 export class MaintenanceError extends Error {
   constructor(code, message, exitCode = 1) {

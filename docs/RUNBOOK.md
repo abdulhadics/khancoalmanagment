@@ -60,6 +60,12 @@
 
 ## Operations and incidents
 
+Run sign-in retention maintenance daily from the installed release directory under the host's maintenance account. Use the protected application environment file and the restricted application database login. The command writes only deletion counts and exits with an error if the transaction fails. The next scheduled run can retry it. Register and observe the job on the client host before handover.
+
+```powershell
+node.exe '--env-file=D:\KhanCoal\protected\app.env' --import tsx scripts/prune-auth-state.ts
+```
+
 - **App fails to start.** In **Services**, verify PostgreSQL and the app service. Check `output.log` and `error.log` under `logs\app`. `http://127.0.0.1:3000/healthz` should return 200. `/readyz` should return 200 when the database is accessible. Match user-reported request IDs against logs. Keep logs out of public support threads.
 - **TLS fails.** Review `logs\proxy`, the hostname, the Windows network profile, and the TCP 80 and 443 rules. On the LAN, verify the client trusts the correct Caddy CA. Test from an authorized client with browser certificate checks enabled.
 - **Backup fails or is stale.** Check the latest successful backup date, the Task Scheduler result, available disk space, and the protected backup settings. Keep the latest working archive and key accessible to the restore operator. Follow the [backup and recovery procedure](BACKUP_RESTORE.md) for an isolated restore, integrity verification, and Owner recovery.

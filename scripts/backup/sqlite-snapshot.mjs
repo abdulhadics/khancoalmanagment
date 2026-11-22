@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { backup, DatabaseSync } from "node:sqlite";
 import { promisify } from "node:util";
+import { omittedData } from "./omitted-tables.mjs";
 
 const execute = promisify(execFile);
 
@@ -23,15 +24,26 @@ async function snapshot(source, destination, recipient, age) {
       database.close();
     }
 
-    const verification = new DatabaseSync(databaseFile, { readOnly: true });
+    const copy = new DatabaseSync(databaseFile);
     try {
+      // Scrub the temporary copy and compact it before encryption. VACUUM
+      // removes old credential bytes from freed SQLite pages.
+      copy.exec("PRAGMA journal_mode=DELETE; PRAGMA secure_delete=ON");
+      const hasTable = copy.prepare(
+        "SELECT 1 FROM sqlite_schema WHERE type = 'table' AND name = ?",
+      );
+      for (const table of omittedData) {
+        if (hasTable.get(table)) copy.exec(`DELETE FROM "${table}"`);
+      }
+      copy.exec("VACUUM");
       if (
-        verification.prepare("PRAGMA quick_check").get()?.quick_check !== "ok"
+        copy.prepare("PRAGMA quick_check").get()?.quick_check !== "ok" ||
+        copy.prepare("PRAGMA foreign_key_check").get()
       ) {
         throw new Error("The SQLite snapshot failed its integrity check.");
       }
     } finally {
-      verification.close();
+      copy.close();
     }
 
     await mkdir(destination, { recursive: true });

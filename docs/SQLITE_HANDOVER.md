@@ -4,9 +4,9 @@ The client wants a single local database file and an off-machine copy of the bus
 
 ## Completed
 
-`scripts/backup/sqlite-snapshot.mjs` takes a consistent SQLite snapshot, checks it, encrypts it with age, and renames the finished `.db.age` file into the destination folder. The client keeps the private recovery key separately. The destination can be a local backup drive or the client's own sync folder. SQLite can create journal or WAL sidecar files while the database is in use. Each encrypted backup is one standalone file.
+`scripts/backup/sqlite-snapshot.mjs` takes a consistent SQLite snapshot, scrubs credential and session data using the same exclusion list as the PostgreSQL backup, compacts and checks the copy, encrypts it with age, and renames the finished `.db.age` file into the destination folder. The client keeps the private recovery key separately. The destination can be a local backup drive or the client's own sync folder. SQLite can create journal or WAL sidecar files while the database is in use. Each encrypted backup is one standalone file. The SQLite application will require an Owner recovery step after restore because the snapshot excludes authentication records.
 
-On Windows with Node 22.18 and age 1.3.2, an encrypted backup of a disposable SQLite database decrypted and reopened with the expected ledger balance. A second test restored committed WAL entries from the encrypted copy while the source connection remained open. A cloud account and scheduled job have yet to be configured or tested. Node 22.18 reports its SQLite API as experimental.
+On Windows with Node 22.18 and age 1.3.2, the encrypted snapshot restored committed WAL entries at the expected exact balance while the source connection stayed open. The six excluded tables were empty in the restored copy, their synthetic record contents were absent from the file bytes, and the source rows remained intact. A cloud account and scheduled job have yet to be configured or tested. Node 22.18 reports its SQLite API as experimental.
 
 ## Application migration
 

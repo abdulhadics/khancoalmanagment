@@ -10,13 +10,13 @@ The application validates HTTPS, PostgreSQL, an authenticator encryption key, an
 
 Bootstrap creates the first Owner from process environment input and stores an Argon2id password hash. The first session requires a password change. An Owner must also enroll a TOTP authenticator in production. Optional staff TOTP enrollment verifies the existing password and an authenticator code. Accepted TOTP time steps are recorded so a previously used code is rejected.
 
-Authentication generates separate random login challenge, session, and reset tokens. PostgreSQL stores their digests. Sessions have 30-minute idle and 12-hour absolute limits. Cookies use HttpOnly and SameSite=Lax. Production uses Secure cookies with protected names. Staff status and role changes, password resets, and signed-in password changes revoke affected sessions. Reset links expire after 20 minutes and can be redeemed once. The login and reset flows use PostgreSQL-backed throttling and generic responses.
+Authentication generates separate random login challenge, session, and reset tokens. PostgreSQL stores their digests. Sessions have 30-minute idle and 12-hour absolute limits. Cookies use HttpOnly and SameSite=Lax. Production uses Secure cookies with protected names. Staff status and role changes, password resets, and signed-in password changes revoke affected sessions. Reset links expire after 20 minutes and can be redeemed once. The login and reset flows use PostgreSQL-backed throttling and generic responses. The maintenance command removes expired authentication records and leaves active records, user credentials and financial data in place. [Windows maintenance runbook](RUNBOOK.md)
 
 ## Authorization and audit
 
 See the [role matrix](PERMISSIONS.md) and [threat model](THREAT_MODEL.md). Authentication checks the current user, credential, and session on protected requests. Staff mutations also recheck the session and role inside the database transaction. The staff management service keeps at least one active Owner and records administrative changes with the same commit as the mutation.
 
-Audit records identify the actor and request, record the outcome, and capture selected before and after fields for mutations. Redaction excludes credentials, tokens, and personal contact fields. PostgreSQL rejects audit mutations, and the restricted app login can read and append audit records. Staff access to the audit review screen is planned with the administrative tools.
+Audit records identify the actor and request, record the outcome, and capture selected before and after fields for mutations. Redaction excludes credentials, tokens, and personal contact fields. PostgreSQL rejects audit mutations, and the restricted app login can read and append audit records. Owners can review the audit trail in administration.
 
 ## Verification
 

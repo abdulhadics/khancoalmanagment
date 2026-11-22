@@ -11,6 +11,7 @@ import {
   readTotpSetup,
 } from "../../src/server/auth/challenge-flows";
 import { loginWithPassword } from "../../src/server/auth/login";
+import { pruneExpiredAuthState } from "../../src/server/auth/maintenance";
 import { hashPassword } from "../../src/server/auth/password";
 import {
   completePasswordReset,
@@ -67,6 +68,69 @@ function authenticatorCode(secret: Buffer, now: Date) {
 }
 
 describe("authentication challenge completion", () => {
+  it("prunes expired authentication records and preserves current credentials", async () => {
+    const database = testDatabase();
+    const started = new Date("1970-01-01T00:00:00Z");
+    const cutoff = new Date("1970-01-01T01:00:00Z");
+    const active = new Date("1970-01-01T02:00:00Z");
+
+    try {
+      const user = await createAccount(database, newPassword(), false);
+      const scope = `cleanup.${randomUUID()}`;
+      for (const expiresAt of [cutoff, active]) {
+        await database.session.create({
+          data: {
+            userId: user.id,
+            tokenDigest: digestToken(newPassword()),
+            issuedAt: started,
+            lastUsedAt: started,
+            expiresAt,
+          },
+        });
+        await database.authChallenge.create({
+          data: {
+            userId: user.id,
+            purpose: "PASSWORD_RESET",
+            tokenDigest: digestToken(newPassword()),
+            createdAt: started,
+            expiresAt,
+          },
+        });
+        await database.rateLimitBucket.create({
+          data: {
+            scope,
+            identifierDigest: digestToken(newPassword()),
+            windowStart: started,
+            expiresAt,
+          },
+        });
+      }
+
+      await expect(pruneExpiredAuthState(database, cutoff)).resolves.toEqual({
+        sessions: 1,
+        challenges: 1,
+        throttleBuckets: 1,
+      });
+      await expect(pruneExpiredAuthState(database, cutoff)).resolves.toEqual({
+        sessions: 0,
+        challenges: 0,
+        throttleBuckets: 0,
+      });
+      for (const records of [
+        await database.session.findMany({ where: { userId: user.id } }),
+        await database.authChallenge.findMany({ where: { userId: user.id } }),
+        await database.rateLimitBucket.findMany({ where: { scope } }),
+      ]) {
+        expect(records.map(({ expiresAt }) => expiresAt)).toEqual([active]);
+      }
+      await expect(
+        database.userCredential.count({ where: { userId: user.id } }),
+      ).resolves.toBe(1);
+    } finally {
+      await database.$disconnect();
+    }
+  });
+
   it("requires temporary-password replacement, rotates credentials, and verifies authenticator enrollment and replay protection", async () => {
     const database = testDatabase();
     const now = new Date("2026-11-21T08:00:01.000Z");

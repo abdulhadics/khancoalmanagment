@@ -30,6 +30,8 @@ The client chose a local SQLite database with an encrypted cloud backup. The cur
 
 For operating instructions, see the [staff user guide](USER_GUIDE.md). For validation evidence and scope, see the [test plan](TEST_PLAN.md).
 
+The follow-up security review added expiry-based authentication cleanup and removed credentials and transient authentication records from SQLite backup copies. The native PostgreSQL suite now passes 84 tests. The local defenses and client-host acceptance steps are in the [security verification record](SECURITY_CHECKLIST.md#local-verification-on-22-november-2026).
+
 The project is a Windows-native replacement for the coal dispatch and accounting workspace. PostgreSQL is the live database. The Owner can save business data in one encrypted backup archive and restore it to a fresh database.
 
 | Work | Status | Evidence |

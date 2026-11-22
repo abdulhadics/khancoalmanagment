@@ -1,5 +1,17 @@
 # Release security checklist
 
+## Local verification on 22 November 2026
+
+- Anonymous requests to Account, audit, PDF vouchers, and Sales CSV redirected to sign-in. The local sign-in response included content security policy, frame denial, MIME sniffing protection, and private no-store caching.
+- The isolated PostgreSQL suite passed 84 tests. The retention regression covers the expiry boundary, repeat execution, and preservation of current records and credentials. The daily task still needs to be registered on the client host.
+- PostgreSQL recovery restored the test payment and reconciled PKR 168.74. The SQLite snapshot restored committed WAL entries in a disposable database and excluded all six sensitive or short-lived tables. A synthetic credential marker was absent from the decrypted file bytes and stayed present in the source. The SQLite application and its Owner recovery are still being ported.
+- The production dependency audit reported zero vulnerabilities. A local Git history scan reported no secrets.
+- GitHub Actions passed on published commit `de25faf`. The current maintenance and recovery changes were checked locally. [Published CI run](https://github.com/abdulhadics/khancoalmanagment/actions/runs/45034119597)
+
+## Remaining release verification
+
+On the client host, confirm service and backup account permissions, HTTPS and firewall rules from a staff device, Owner enrollment and recovery email, and scheduled backup delivery. Restore a copy from the actual cloud destination on a separate machine and confirm user recovery, journal totals, and the last completed backup time. Verify the chosen SQLite build against the expected data and staff load before importing live records. This checklist records internal verification and client acceptance. Independent security assessment has yet to be performed.
+
 | Control                                                             | Evidence                                                                                                                                                                                                               | Status                                              |
 | ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
 | Protected workspace and least-privilege action access               | PostgreSQL identity, permission, staff, report export, and administration tests. Edge exercises sign-in, password change, Viewer denials, and revocation.                                                              | Verified locally                                    |
