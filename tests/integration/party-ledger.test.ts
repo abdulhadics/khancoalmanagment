@@ -8,6 +8,7 @@ import { hashPassword } from "../../src/server/auth/password";
 import { makePrisma } from "../../src/server/db/connect";
 import {
   parsePartyLedgerFilters,
+  readLedgerPartyChoices,
   readPartyLedger,
 } from "../../src/server/details/party-ledger";
 import { createOrders } from "../../src/server/orders/create";
@@ -17,6 +18,8 @@ import {
   readPartySummaryReport,
 } from "../../src/server/reporting/party-summary";
 import { ReportPeriodError } from "../../src/server/reporting/period";
+import { getCashMovementTotals } from "../../src/server/repositories/cash-movement";
+import { getPartyRollups } from "../../src/server/repositories/party-ledger-rollups";
 
 const database = makePrisma(process.env.INTEGRATION_DATABASE_URL!);
 const request = { requestId: randomUUID() };
@@ -291,6 +294,115 @@ const period = {
 };
 
 describe("party ledger details on PostgreSQL", () => {
+  it("retains inactive parties in the historical picker and leaves an invalid selection empty", async () => {
+    const [customers, suppliers] = await Promise.all([
+      readLedgerPartyChoices(database, "customer"),
+      readLedgerPartyChoices(database, "supplier"),
+    ]);
+    expect(customers).toContainEqual({
+      id: customerId,
+      code: `LD-C-${label}`,
+      name: `Buyer ${label}`,
+      isActive: false,
+    });
+    expect(suppliers).toContainEqual({
+      id: supplierId,
+      code: `LD-S-${label}`,
+      name: `Supplier ${label}`,
+      isActive: true,
+    });
+    expect(customers.some(({ id }) => id === supplierId)).toBe(false);
+    expect(suppliers.some(({ id }) => id === customerId)).toBe(false);
+    await expect(
+      readPartyLedger(
+        database,
+        "customer",
+        parsePartyLedgerFilters(new URLSearchParams({ partyId: "missing" })),
+      ),
+    ).resolves.toBeNull();
+  });
+
+  it("carries the previous balance through periods without activity", async () => {
+    const opening = await readPartyLedger(
+      database,
+      "customer",
+      parsePartyLedgerFilters({ partyId: customerId, to: "2008-08-01" }),
+    );
+    expect(opening).toMatchObject({
+      matchedCount: 1,
+      summary: {
+        openingBalance: "0.00",
+        adjustments: "95.50",
+        closingBalance: "95.50",
+      },
+      rows: [{ kind: "CUSTOMER_OPENING", balance: "95.50" }],
+    });
+
+    const quietDay = await readPartyLedger(
+      database,
+      "customer",
+      parsePartyLedgerFilters({
+        partyId: customerId,
+        from: "2008-08-13",
+        to: "2008-08-13",
+        page: "9",
+      }),
+    );
+    expect(quietDay).toMatchObject({
+      page: 1,
+      lastPage: 1,
+      matchedCount: 0,
+      rows: [],
+      summary: {
+        openingBalance: "115.43",
+        closingBalance: "115.43",
+        activity: "0.00",
+        billed: "0.00",
+        settled: "0.00",
+        adjustments: "0.00",
+        pending: "115.43",
+        advance: "0.00",
+        trucks: 0,
+        weight: "0.000",
+        entryCount: 0,
+      },
+    });
+  });
+
+  it("applies inclusive Date bounds to rollups and cash with unique party totals", async () => {
+    const postingDay = parseBusinessDate("2008-08-02");
+    const [rollups, emptyRollups, cash] = await Promise.all([
+      getPartyRollups(
+        database,
+        "customer",
+        [customerId, customerId],
+        postingDay,
+        postingDay,
+      ),
+      getPartyRollups(database, "supplier", [], postingDay),
+      getCashMovementTotals(database, {
+        from: postingDay,
+        through: postingDay,
+      }),
+    ]);
+    expect(rollups).toEqual([
+      {
+        partyId: customerId,
+        trucks: 1,
+        weight: "10.005",
+        billed: "40.02",
+        settled: "10.09",
+        balance: "29.93",
+      },
+    ]);
+    expect(emptyRollups).toEqual([]);
+    expect(cash).toEqual({
+      received: "10.09",
+      paid: "10.01",
+      balanceInHand: "0.08",
+    });
+  });
+
   it("keeps opening, closing and running balances exact across date filters and pages", async () => {
     const first = await readPartyLedger(
       database,

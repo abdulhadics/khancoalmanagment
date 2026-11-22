@@ -87,8 +87,10 @@ function PaymentDraft({
   const [lookup, setLookup] = useState<{
     id: string;
     businessDate: string;
-    balance: string;
+    attempt: number;
+    balance: string | null;
   } | null>(null);
+  const [balanceAttempt, setBalanceAttempt] = useState(0);
   const [dirty, setDirty] = useState(false);
   const bankRequired = method !== "ADJUSTMENT";
   const referenceRequired = bankRequired && method !== "CASH";
@@ -103,26 +105,40 @@ function PaymentDraft({
   const selected = options.parties.find(({ id }) => id === partyId);
   const catalogBalance =
     date === options.businessDate ? selected?.balance : undefined;
-  const balance =
-    catalogBalance ??
-    (lookup?.id === partyId && lookup.businessDate === date
-      ? lookup.balance
-      : undefined);
+  const canPreview = Boolean(
+    selected && date.length === 10 && date <= options.businessDate,
+  );
+  const currentLookup =
+    lookup?.id === partyId &&
+    lookup.businessDate === date &&
+    lookup.attempt === balanceAttempt
+      ? lookup
+      : null;
+  const balance = catalogBalance ?? currentLookup?.balance ?? undefined;
+  const balanceUnavailable =
+    canPreview && balance === undefined && Boolean(currentLookup);
   const issue = state.issue;
   const invalid = (field: string) => issue?.field === field || undefined;
 
   useEffect(() => {
-    if (!partyId || catalogBalance !== undefined || date.length !== 10) return;
+    if (!canPreview || catalogBalance !== undefined) return;
     let current = true;
+    const savePreview = (balance: string | null) => {
+      if (current)
+        setLookup({
+          id: partyId,
+          businessDate: date,
+          attempt: balanceAttempt,
+          balance,
+        });
+    };
     void previewPartyBalance(direction, partyId, date)
-      .then((result) => {
-        if (current) setLookup(result);
-      })
-      .catch(() => {});
+      .then((result) => savePreview(result?.balance ?? null))
+      .catch(() => savePreview(null));
     return () => {
       current = false;
     };
-  }, [catalogBalance, date, direction, partyId]);
+  }, [balanceAttempt, canPreview, catalogBalance, date, direction, partyId]);
 
   useEffect(() => {
     if (!dirty || pending) return;
@@ -176,13 +192,27 @@ function PaymentDraft({
           <span>
             {date === options.businessDate ? t.balance : t.datedBalance}
           </span>
-          <strong className="tabular-nums" aria-live="polite">
+          <strong className="tabular-nums" role="status">
             {balance !== undefined
               ? formatCurrency(balance, preferences)
-              : selected
-                ? "—"
-                : t.noParty}
+              : !selected
+                ? t.noParty
+                : !canPreview
+                  ? t.selectBalanceDate
+                  : balanceUnavailable
+                    ? t.balanceUnavailable
+                    : t.loadingBalance}
           </strong>
+          {balanceUnavailable && (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => setBalanceAttempt((attempt) => attempt + 1)}
+            >
+              {t.retryBalance}
+            </Button>
+          )}
         </div>
         <label className={label}>
           <span>{t.method}</span>

@@ -12,6 +12,7 @@ import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
+import { SalesPartyFilter } from "@/components/workspace/sales-party-filter";
 import { parseBusinessDate } from "@/domain/business-date";
 import { formatDocumentDate } from "@/domain/document-format";
 import { formatCurrency, formatDecimal } from "@/domain/number-display";
@@ -22,7 +23,6 @@ import { getDatabase } from "@/server/db/client";
 import {
   parseSalesFilters,
   readSalesDetailsPage,
-  readSalesFiltersOptions,
   salesFilterParameters,
   SalesFiltersError,
   salesPageSizes,
@@ -31,6 +31,7 @@ import {
   type SalesSortColumn,
 } from "@/server/reporting/sales-details";
 import { ReportPeriodError } from "@/server/reporting/period";
+import { readSalesPartyCatalogs } from "@/server/reporting/sales-party-options";
 import { readDocumentDisplayPreferences } from "@/server/settings/company";
 import { voidSalesOrders } from "./actions";
 import {
@@ -78,7 +79,7 @@ function SalesFiltersForm({
   rejected,
 }: {
   filters: SalesFilters;
-  options: Awaited<ReturnType<typeof readSalesFiltersOptions>>;
+  options: Awaited<ReturnType<typeof readSalesPartyCatalogs>>;
   rejected?: Query;
 }) {
   const [customers, suppliers] = options;
@@ -134,34 +135,16 @@ function SalesFiltersForm({
           defaultValue={value("to")}
         />
       </FilterField>
-      <FilterField label={t.columns.customer}>
-        <select
-          className={control}
-          name="customerId"
-          defaultValue={value("customerId") ?? ""}
-        >
-          <option value="">{t.allCustomers}</option>
-          {customers.map((party) => (
-            <option key={party.id} value={party.id}>
-              {party.name} · {party.code}
-            </option>
-          ))}
-        </select>
-      </FilterField>
-      <FilterField label={t.columns.supplier}>
-        <select
-          className={control}
-          name="supplierId"
-          defaultValue={value("supplierId") ?? ""}
-        >
-          <option value="">{t.allSuppliers}</option>
-          {suppliers.map((party) => (
-            <option key={party.id} value={party.id}>
-              {party.name} · {party.code}
-            </option>
-          ))}
-        </select>
-      </FilterField>
+      <SalesPartyFilter
+        kind="customer"
+        catalog={customers}
+        className={control}
+      />
+      <SalesPartyFilter
+        kind="supplier"
+        catalog={suppliers}
+        className={control}
+      />
       <FilterField label={t.search}>
         <input
           className={control}
@@ -420,7 +403,7 @@ export default async function SalesDetailsPage({
       error instanceof SalesFiltersError || error instanceof ReportPeriodError
     ))
       throw error;
-    const options = await readSalesFiltersOptions(database, actor);
+    const options = await readSalesPartyCatalogs(database, actor, query);
     return (
       <>
         <header className="page-heading">
@@ -441,7 +424,7 @@ export default async function SalesDetailsPage({
     );
   }
   const [options, prefs] = await Promise.all([
-    readSalesFiltersOptions(database, actor),
+    readSalesPartyCatalogs(database, actor, data.filters),
     readDocumentDisplayPreferences(database),
   ]);
   const money = (value: string) => formatCurrency(value, prefs);

@@ -58,3 +58,16 @@ The replay used the same Windows workstation, software versions, seed, business 
 In three samples each, p95 was 0.520 seconds for the all-time dashboard, 0.436 seconds for the all-time sales report, 0.444 seconds for the all-time sales CSV, and 0.431 seconds for the 14-day sales PDF. All 55 posting attempts succeeded at p95 of 0.221 seconds with one session and 1.328 seconds with ten. The selected dashboard and sales report totals matched the baseline figures exactly and the integrity scan again found zero issues in 0.989 seconds.
 
 The replay met the two-second target for all single-session pages. Dashboard, Sales Details, Account, and Sales Report exceeded it with ten concurrent sessions. Resolving those tail latencies and measuring the 500,000-order and 10,000-payment workload on the target Windows Server remain release acceptance tasks.
+
+## 22 November local follow-up
+
+The Windows rerun used 100,000 orders, 10,000 payments, five single-session requests per page, and fifty requests per page at ten concurrent sessions. All 440 measured page responses succeeded. The dashboard and Sales Report reconciled exactly, and the accounting integrity scan returned zero findings.
+
+| Page | Previous ten-session p95 | Current ten-session p95 |
+| --- | ---: | ---: |
+| Sales Details | 3.670 s | 0.530 s |
+| Sales Report | 4.289 s | 0.237 s |
+| Account | 3.071 s | 2.150 s |
+| Dashboard | 2.342 s | 2.400 s |
+
+The Sales screens now search large party directories on demand. On this fixture the Sales Details response rendered 17 select options and the Sales Report rendered 22. Those counts include the standalone month, page size, and grouping controls. Account reuses one ledger balance snapshot and sorts amounts numerically. Dashboard's date rollup reads revision weights for sales entries only. Account and Dashboard still exceed two seconds at ten sessions, and capacity testing on the deployment host remains open.

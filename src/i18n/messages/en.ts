@@ -9,6 +9,7 @@ export const en = {
     closeNavigation: "Close navigation",
     notFound: "Page not found",
     backDashboard: "Back to dashboard",
+    leaveDraft: "Leave this page with unsaved changes?",
   },
   nav: {
     dashboard: "Dashboard",

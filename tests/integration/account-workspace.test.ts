@@ -348,6 +348,44 @@ describe("account read models on PostgreSQL", () => {
     });
   });
 
+  it("ranks pending parties by exact numeric amount before formatting", async () => {
+    const search = `account sort ${label}`;
+    const [small, large] = await Promise.all(
+      ["First", "Second"].map((name) =>
+        database.customer.create({
+          data: {
+            code: `AW-${name}-${label}`,
+            name: `${search} ${name}`,
+            nameKey: `${search} ${name.toLowerCase()}`,
+            createdById: accountant.userId,
+            updatedById: accountant.userId,
+          },
+          select: { id: true },
+        }),
+      ),
+    );
+    const businessDate = parseBusinessDate("2008-03-01");
+    await database.ledgerEntry.createMany({
+      data: [
+        { customerId: small.id, amount: "2.00" },
+        { customerId: large.id, amount: "100.00" },
+      ].map((opening) => ({
+        ...opening,
+        businessDate,
+        actorId: accountant.userId,
+        kind: "CUSTOMER_OPENING" as const,
+      })),
+    });
+
+    const { customers } = await readAccountWorkspace(database, accountant, {
+      customers: { q: search, status: "pending" },
+    });
+    expect(customers.rows).toMatchObject([
+      { id: large.id, pending: "100.00" },
+      { id: small.id, pending: "2.00" },
+    ]);
+  });
+
   it("denies account history, payment options and balance previews to Operators", async () => {
     const operator = { ...accountant, roleCode: "OPERATOR" as const };
     await expect(

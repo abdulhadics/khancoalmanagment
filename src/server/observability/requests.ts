@@ -24,6 +24,7 @@ const staticRoutes = new Set([
   "/orders/print",
   "/profile",
   "/readyz",
+  "/reports/party-options",
   "/reset-password",
   "/settings",
   "/settings/users",

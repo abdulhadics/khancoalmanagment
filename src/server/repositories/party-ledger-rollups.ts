@@ -97,6 +97,20 @@ export async function getPartyRollupTotals(
   return { ...row, trucks: Number(row.trucks) };
 }
 
+export function partyBalancesQuery(through: string) {
+  return Prisma.sql`
+    SELECT customer_id, supplier_id, SUM(amount) AS balance
+    FROM ledger_entries
+    WHERE business_date <= ${through}::date
+    GROUP BY customer_id, supplier_id
+  `;
+}
+
+export const outstandingBalanceTotals = Prisma.sql`
+  COALESCE(SUM(balance) FILTER (WHERE customer_id IS NOT NULL AND balance > 0), 0)::text AS receivable,
+  COALESCE(SUM(balance) FILTER (WHERE supplier_id IS NOT NULL AND balance > 0), 0)::text AS payable
+`;
+
 // The dashboard needs only closing dues. Group the same signed journal
 // amounts by party once so that advances never offset another party's debt.
 export async function getOutstandingBalances(
@@ -106,16 +120,8 @@ export async function getOutstandingBalances(
   const [result] = await tx.$queryRaw<
     { receivable: string; payable: string }[]
   >`
-    SELECT
-      COALESCE(SUM(balance) FILTER (WHERE customer_id IS NOT NULL), 0)::text AS receivable,
-      COALESCE(SUM(balance) FILTER (WHERE supplier_id IS NOT NULL), 0)::text AS payable
-    FROM (
-      SELECT customer_id, supplier_id, SUM(amount) AS balance
-      FROM ledger_entries
-      WHERE business_date <= ${through}::date
-      GROUP BY customer_id, supplier_id
-      HAVING SUM(amount) > 0
-    ) AS outstanding
+    SELECT ${outstandingBalanceTotals}
+    FROM (${partyBalancesQuery(through)}) AS outstanding
   `;
   return result;
 }

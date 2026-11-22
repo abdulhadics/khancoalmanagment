@@ -254,20 +254,3 @@ export async function readSalesDetailsExport(
     total,
   };
 }
-
-export async function readSalesFiltersOptions(
-  database: PrismaClient,
-  actor: LivePrincipal,
-) {
-  requirePermission(actor, "details.view");
-  return Promise.all([
-    database.customer.findMany({
-      orderBy: [{ nameKey: "asc" }, { id: "asc" }],
-      select: { id: true, name: true, code: true },
-    }),
-    database.supplier.findMany({
-      orderBy: [{ nameKey: "asc" }, { id: "asc" }],
-      select: { id: true, name: true, code: true },
-    }),
-  ]);
-}

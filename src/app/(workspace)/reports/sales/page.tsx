@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
+import { SalesPartyFilter } from "@/components/workspace/sales-party-filter";
 import { parseBusinessDate } from "@/domain/business-date";
 import { formatDocumentDate } from "@/domain/document-format";
 import { formatCurrency, formatDecimal } from "@/domain/number-display";
@@ -17,9 +18,9 @@ import {
   SalesFiltersError,
   salesPageSizes,
 } from "@/server/reporting/sales-details";
+import { readSalesPartyCatalogs } from "@/server/reporting/sales-party-options";
 import {
   parseSalesReportFilters,
-  readSalesReportOptions,
   readSalesReportPage,
   salesReportGroups,
   salesReportParameters,
@@ -53,20 +54,11 @@ function Filters({
   raw,
 }: {
   filters: SalesReportFilters;
-  options: Awaited<ReturnType<typeof readSalesReportOptions>>;
+  options: Awaited<ReturnType<typeof readSalesPartyCatalogs>>;
   raw?: Query;
 }) {
   const [customers, suppliers] = options;
-  function value(
-    field:
-      | "year"
-      | "month"
-      | "from"
-      | "to"
-      | "customerId"
-      | "supplierId"
-      | "groupBy",
-  ) {
+  function value(field: "year" | "month" | "from" | "to" | "groupBy") {
     const supplied = raw?.[field];
     return typeof supplied === "string" ? supplied : (filters[field] ?? "");
   }
@@ -112,34 +104,8 @@ function Filters({
           defaultValue={value("to")}
         />
       </Field>
-      <Field label={common.columns.customer}>
-        <select
-          name="customerId"
-          className={input}
-          defaultValue={value("customerId")}
-        >
-          <option value="">{common.allCustomers}</option>
-          {customers.map((party) => (
-            <option key={party.id} value={party.id}>
-              {party.name} · {party.code}
-            </option>
-          ))}
-        </select>
-      </Field>
-      <Field label={common.columns.supplier}>
-        <select
-          name="supplierId"
-          className={input}
-          defaultValue={value("supplierId")}
-        >
-          <option value="">{common.allSuppliers}</option>
-          {suppliers.map((party) => (
-            <option key={party.id} value={party.id}>
-              {party.name} · {party.code}
-            </option>
-          ))}
-        </select>
-      </Field>
+      <SalesPartyFilter kind="customer" catalog={customers} className={input} />
+      <SalesPartyFilter kind="supplier" catalog={suppliers} className={input} />
       <Field label={t.groupBy}>
         <select
           name="groupBy"
@@ -381,7 +347,7 @@ export default async function SalesReportPage({
       throw error;
   }
   const [options, prefs] = await Promise.all([
-    readSalesReportOptions(database, actor),
+    readSalesPartyCatalogs(database, actor, report?.filters ?? raw),
     readDocumentDisplayPreferences(database),
   ]);
   const filters = report?.filters ?? parseSalesReportFilters();

@@ -237,20 +237,3 @@ export async function readSalesReportExport(
     throw new RangeError("Invalid report export limit.");
   return querySalesReport(tx, parseSalesReportFilters(raw), limit, 1);
 }
-
-export async function readSalesReportOptions(
-  database: PrismaClient,
-  actor: LivePrincipal,
-) {
-  requirePermission(actor, "reports.view");
-  return Promise.all([
-    database.customer.findMany({
-      orderBy: [{ nameKey: "asc" }, { id: "asc" }],
-      select: { id: true, name: true, code: true },
-    }),
-    database.supplier.findMany({
-      orderBy: [{ nameKey: "asc" }, { id: "asc" }],
-      select: { id: true, name: true, code: true },
-    }),
-  ]);
-}

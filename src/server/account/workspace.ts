@@ -11,11 +11,17 @@ import {
 } from "@/generated/prisma/client";
 import { getCashMovementTotals } from "../repositories/cash-movement";
 import {
-  getOutstandingBalances,
   getPartyRollups,
   partyLedgerRollupQuery,
 } from "../repositories/party-ledger-rollups";
 import { readDocumentDisplayPreferences } from "../settings/company";
+import {
+  accountPageNumber,
+  accountPageSize,
+  accountPartyTable,
+  accountSearch,
+  readAccountPartyBalances,
+} from "./party-balances";
 
 export type AccountParty = "customer" | "supplier";
 export type AccountPartyStatus = "all" | "pending" | "clear";
@@ -59,22 +65,6 @@ export type PendingPartyRow = PartyIdentity & {
   advance: string;
 };
 
-const pageSize = 20;
-
-function partyTable(party: AccountParty) {
-  return party === "customer" ? Prisma.sql`customers` : Prisma.sql`suppliers`;
-}
-
-function pageNumber(page?: number) {
-  return page !== undefined && Number.isSafeInteger(page) && page >= 1
-    ? page
-    : 1;
-}
-
-function textSearch(q?: string) {
-  return q?.trim().slice(0, 120) ?? "";
-}
-
 function readDateFilter(date?: string) {
   if (!date) return undefined;
   try {
@@ -82,62 +72,6 @@ function readDateFilter(date?: string) {
   } catch {
     return undefined;
   }
-}
-
-async function readPendingParties(
-  tx: Prisma.TransactionClient,
-  party: AccountParty,
-  filters: AccountPartyFilters = {},
-  asOf: string,
-) {
-  const q = textSearch(filters.q).toLowerCase();
-  const status =
-    filters.status === "pending" || filters.status === "clear"
-      ? filters.status
-      : "all";
-  const table = partyTable(party);
-  const source = Prisma.sql`
-    FROM ${table} AS party
-    WHERE (${q} = '' OR strpos(party.name_key, ${q}) > 0 OR strpos(lower(party.code), ${q}) > 0)
-  `;
-  const scope = Prisma.sql`
-    WITH matched AS (
-      SELECT party.id, party.code, party.name, party.name_key, party.is_active ${source}
-    ), values_by_party AS (
-      SELECT matched.*, COALESCE(rollups.billed, 0) AS billed,
-        COALESCE(rollups.settled, 0) AS settled, COALESCE(rollups.balance, 0) AS balance
-      FROM matched LEFT JOIN (${partyLedgerRollupQuery(party, Prisma.sql`SELECT id FROM matched`, asOf)}) AS rollups
-        ON matched.id = rollups."partyId"
-    )
-  `;
-  const state =
-    status === "pending"
-      ? Prisma.sql`WHERE balance > 0`
-      : status === "clear"
-        ? Prisma.sql`WHERE balance <= 0`
-        : Prisma.empty;
-  const [{ count }] =
-    status === "all"
-      ? await tx.$queryRaw<{ count: bigint }[]>(
-          Prisma.sql`SELECT COUNT(*) AS count ${source}`,
-        )
-      : await tx.$queryRaw<{ count: bigint }[]>(
-          Prisma.sql`${scope} SELECT COUNT(*) AS count FROM values_by_party ${state}`,
-        );
-  const matchedCount = Number(count);
-  const lastPage = Math.max(1, Math.ceil(matchedCount / pageSize));
-  const page = Math.min(pageNumber(filters.page), lastPage);
-  const rows = matchedCount
-    ? await tx.$queryRaw<PendingPartyRow[]>(Prisma.sql`
-    ${scope}
-    SELECT id, code, name, is_active AS "isActive", billed::text, settled::text, balance::text,
-      GREATEST(balance, 0)::text AS pending, GREATEST(-balance, 0)::text AS advance
-    FROM values_by_party ${state}
-    ORDER BY balance DESC, name_key, id
-    LIMIT ${pageSize} OFFSET ${(page - 1) * pageSize}
-  `)
-    : [];
-  return { page, lastPage, matchedCount, rows };
 }
 
 const voucherFields = {
@@ -161,7 +95,7 @@ async function readTransactions(
   filters: VoucherFilters = {},
   asOf: string,
 ) {
-  const search = textSearch(filters.q).replace(/[%_\\]/g, "\\$&");
+  const search = accountSearch(filters.q).replace(/[%_\\]/g, "\\$&");
   const contains = { contains: search, mode: "insensitive" } as const;
   const end =
     filters.to && filters.to < asOf ? readDateFilter(filters.to) : undefined;
@@ -196,13 +130,13 @@ async function readTransactions(
       : {}),
   } satisfies Prisma.PaymentWhereInput;
   const matchedCount = await tx.payment.count({ where });
-  const lastPage = Math.max(1, Math.ceil(matchedCount / pageSize));
-  const page = Math.min(pageNumber(filters.page), lastPage);
+  const lastPage = Math.max(1, Math.ceil(matchedCount / accountPageSize));
+  const page = Math.min(accountPageNumber(filters.page), lastPage);
   const records = await tx.payment.findMany({
     where,
     orderBy: [{ businessDate: "desc" }, { ordinal: "desc" }],
-    skip: (page - 1) * pageSize,
-    take: pageSize,
+    skip: (page - 1) * accountPageSize,
+    take: accountPageSize,
     select: voucherFields,
   });
   const rows = records.map(
@@ -221,36 +155,18 @@ async function readTransactions(
   return { page, lastPage, matchedCount, rows };
 }
 
-async function readAccountSummary(tx: Prisma.TransactionClient, asOf: string) {
-  const [cash, balances, vouchers, uncleared] = await Promise.all([
-    getCashMovementTotals(tx, { through: asOf }),
-    getOutstandingBalances(tx, asOf),
-    tx.payment.count({
-      where: { businessDate: { lte: parseBusinessDate(asOf) } },
-    }),
-    tx.payment.groupBy({
-      by: ["direction"],
-      where: {
-        businessDate: { lte: parseBusinessDate(asOf) },
-        method: "CHEQUE",
-        status: { in: ["RECEIVED", "DEPOSITED"] },
-      },
-      _sum: { amount: true },
-    }),
-  ]);
-  return {
-    ...cash,
-    ...balances,
-    voucherCount: vouchers,
-    unclearedReceived:
-      uncleared
-        .find(({ direction }) => direction === "IN")
-        ?._sum.amount?.toFixed(2) ?? "0",
-    unclearedPaid:
-      uncleared
-        .find(({ direction }) => direction === "OUT")
-        ?._sum.amount?.toFixed(2) ?? "0",
-  };
+async function readVoucherSummary(tx: Prisma.TransactionClient, asOf: string) {
+  const uncleared = Prisma.sql`method = 'CHEQUE' AND status IN ('RECEIVED', 'DEPOSITED')`;
+  const [summary] = await tx.$queryRaw<
+    { voucherCount: bigint; unclearedReceived: string; unclearedPaid: string }[]
+  >`
+    SELECT COUNT(*) AS "voucherCount",
+      COALESCE(SUM(amount) FILTER (WHERE ${uncleared} AND direction = 'IN'), 0)::text AS "unclearedReceived",
+      COALESCE(SUM(amount) FILTER (WHERE ${uncleared} AND direction = 'OUT'), 0)::text AS "unclearedPaid"
+    FROM payments
+    WHERE business_date <= ${asOf}::date
+  `;
+  return { ...summary, voucherCount: Number(summary.voucherCount) };
 }
 
 export async function readAccountWorkspace(
@@ -262,14 +178,16 @@ export async function readAccountWorkspace(
   const asOf = todayBusinessDate();
   return database.$transaction(
     async (tx) => {
-      const [summary, customers, suppliers, transactions, preferences] =
+      const [cash, vouchers, partyBalances, transactions, preferences] =
         await Promise.all([
-          readAccountSummary(tx, asOf),
-          readPendingParties(tx, "customer", filters.customers, asOf),
-          readPendingParties(tx, "supplier", filters.suppliers, asOf),
+          getCashMovementTotals(tx, { through: asOf }),
+          readVoucherSummary(tx, asOf),
+          readAccountPartyBalances(tx, filters, asOf),
           readTransactions(tx, filters.vouchers, asOf),
           readDocumentDisplayPreferences(tx),
         ]);
+      const { customers, suppliers, ...balances } = partyBalances;
+      const summary = { ...cash, ...balances, ...vouchers };
       return { asOf, summary, customers, suppliers, transactions, preferences };
     },
     { isolationLevel: "RepeatableRead" },
@@ -327,7 +245,7 @@ export async function readAccountFormOptions(
   requirePermission(actor, "account.manage");
   const date = optionDate(businessDate);
   const party = directionParty(direction);
-  const table = partyTable(party);
+  const table = accountPartyTable(party);
   return database.$transaction(
     async (tx) => {
       const matches = Prisma.sql`SELECT id FROM ${table} WHERE is_active`;
@@ -358,7 +276,7 @@ export async function readPaymentPartyBalance(
   const date = optionDate(businessDate);
   const party = directionParty(direction);
   const id = partyId.toLowerCase();
-  const table = partyTable(party);
+  const table = accountPartyTable(party);
   return database.$transaction(
     async (tx) => {
       const [active] = await tx.$queryRaw<{ id: string }[]>(Prisma.sql`

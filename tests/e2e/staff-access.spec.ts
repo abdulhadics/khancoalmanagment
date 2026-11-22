@@ -1,4 +1,5 @@
 import { randomBytes } from "node:crypto";
+import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { hashPassword } from "../../src/server/auth/password";
 import { makePrisma } from "../../src/server/db/connect";
@@ -50,6 +51,92 @@ async function createBrowserOwner(
     await db.$disconnect();
   }
 }
+
+test("Sales filters search a large directory and keep the chosen historical customer", async ({
+  page,
+}) => {
+  const password = randomBytes(24).toString("base64url");
+  const username = "browser-sales-lookup";
+  await createBrowserOwner(username, password, false);
+
+  const db = makePrisma(process.env.INTEGRATION_DATABASE_URL!);
+  const targetName = "ZZ Historical Foundry 55%";
+  let customerId: string;
+  try {
+    const owner = await db.user.findUniqueOrThrow({ where: { username } });
+    const authorship = { createdById: owner.id, updatedById: owner.id };
+    await db.customer.createMany({
+      data: Array.from({ length: 42 }, (_, index) => ({
+        ...authorship,
+        name: `AAA Sales Lookup ${index}`,
+        nameKey: `aaa sales lookup ${index}`,
+        code: `LOOKUP-${index}`,
+      })),
+    });
+    const target = await db.customer.create({
+      data: {
+        ...authorship,
+        name: targetName,
+        nameKey: targetName.toLowerCase(),
+        code: "LOOKUP-END",
+        isActive: false,
+      },
+    });
+    customerId = target.id;
+  } finally {
+    await db.$disconnect();
+  }
+
+  const endpoint = "/reports/party-options";
+  expect((await page.request.get(`${endpoint}?kind=customer`)).status()).toBe(
+    404,
+  );
+  await logIn(page, username, password);
+  await expect(
+    page.getByRole("heading", { name: "Dashboard", exact: true }),
+  ).toBeVisible();
+  await page.goto("/reports/sales");
+  const unfiltered = page.getByRole("button", {
+    name: "Customer All customers",
+  });
+  await unfiltered.press("Enter");
+  const lookup = page.getByRole("dialog", { name: "Choose customer" });
+  const search = lookup.getByRole("searchbox", {
+    name: "Customer name or code",
+  });
+  await expect(search).toBeFocused();
+  await search.fill("55%");
+  const match = lookup.getByRole("button", {
+    name: /ZZ Historical Foundry 55%/,
+  });
+  await expect(match).toBeVisible();
+  await expect(lookup.getByRole("status")).toHaveText("One matching result.");
+  await match.press("Enter");
+  await expect(lookup).toBeHidden();
+  const selected = page.getByRole("button", {
+    name: /Customer ZZ Historical Foundry 55%/,
+  });
+  await expect(selected).toBeFocused();
+  await page.getByRole("button", { name: "Apply filters" }).click();
+  await expect(page).toHaveURL(new RegExp(`customerId=${customerId}`));
+  await expect(selected).toBeVisible();
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(`/details/sales?customerId=${customerId.toUpperCase()}`);
+  await selected.click();
+  await expect(search).toBeFocused();
+  expect(
+    (
+      await new AxeBuilder({ page })
+        .include("dialog[open]")
+        .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+        .analyze()
+    ).violations,
+  ).toEqual([]);
+  await search.press("Escape");
+  await expect(lookup).toBeHidden();
+  await expect(selected).toBeFocused();
+});
 
 test("Owner creates a Viewer whose access is restricted and revoked when disabled", async ({
   page,
@@ -105,7 +192,9 @@ test("Owner creates a Viewer whose access is restricted and revoked when disable
   }
 
   await page.goto("/");
-  await page.getByLabel("Browser Test Owner, profile menu", { exact: true }).click();
+  await page
+    .getByLabel("Browser Test Owner, profile menu", { exact: true })
+    .click();
   await page.getByRole("button", { name: "Sign out", exact: true }).click();
   await expect(page).toHaveURL(/\/login$/);
 });
@@ -131,7 +220,7 @@ test("Owner records opening balances and configures company settings", async ({
     .getByRole("button", { name: "Create customer", exact: true })
     .click();
   await expect(page.getByRole("status")).toHaveText("Customer saved.");
-  await page.goto("/customers");
+  await page.goto("/customers?q=Browser+Foundry");
   const customer = page.getByRole("row", { name: /Browser Foundry/ });
   await expect(customer).toContainText(/1,500\.25/);
 
@@ -196,6 +285,32 @@ test("Owner adds dispatch parties in place and posts an exact-priced truck", asy
   await expect(
     page.getByRole("heading", { name: "Order Entry" }),
   ).toBeVisible();
+
+  const draftVehicle = page.getByRole("textbox", { name: "Vehicle number 1" });
+  await draftVehicle.fill("KCS-DRAFT");
+  const leave = page.waitForEvent("dialog").then(async (prompt) => {
+    await prompt.dismiss();
+    return prompt.message();
+  });
+  const [message] = await Promise.all([
+    leave,
+    page
+      .getByRole("navigation", { name: "Main navigation" })
+      .getByRole("link", { name: "Dashboard", exact: true })
+      .click(),
+  ]);
+  expect(message).toBe("Leave this page with unsaved changes?");
+  await expect(page).toHaveURL(/\/orders(?:\?|$)/);
+  await expect(draftVehicle).toHaveValue("KCS-DRAFT");
+  await page.getByRole("button", { name: "Add all orders" }).click();
+  await expect(
+    page.getByRole("alert").filter({
+      hasText: "Review the marked dispatch fields, then try again.",
+    }),
+  ).toBeVisible();
+  const invalidField = page.locator('[aria-invalid="true"]:focus');
+  await expect(invalidField).toBeFocused();
+  await expect(invalidField).toHaveAccessibleDescription(/\S/);
 
   await page.getByRole("button", { name: "Add customer", exact: true }).click();
   const customer = page.getByRole("dialog", { name: "Add customer" });
@@ -363,7 +478,9 @@ test("Owner records a quick receipt and a supplier payment with voucher PDFs", a
   await quick
     .getByRole("button", { name: "Record receipt", exact: true })
     .click();
-  await expect(quick.getByRole("status")).toContainText("Voucher recorded.");
+  await expect(
+    quick.getByRole("status").filter({ hasText: "Voucher recorded." }),
+  ).toBeVisible();
   const pdf = await quick
     .getByRole("link", { name: "Open voucher PDF" })
     .getAttribute("href");
@@ -376,10 +493,23 @@ test("Owner records a quick receipt and a supplier payment with voucher PDFs", a
     "/account?customerQ=Payment+Test+Customer&supplierQ=Payment+Test+Supplier",
   );
   const pay = page.getByRole("region", { name: "Supplier payment" });
+  const accountPage = /\/account(?:\?|$)/;
+  let interruptBalance = true;
+  await page.route(accountPage, async (route) => {
+    if (interruptBalance && route.request().method() === "POST") {
+      interruptBalance = false;
+      await route.abort("failed");
+    } else {
+      await route.continue();
+    }
+  });
   await pay
     .getByRole("combobox", { name: "Supplier", exact: true })
     .selectOption(supplierId);
-  await expect(pay.getByText(/900\.00/)).toBeVisible();
+  await expect(pay.getByRole("status")).toHaveText("Balance unavailable.");
+  await pay.getByRole("button", { name: "Retry balance" }).click();
+  await expect(pay.getByRole("status")).toContainText("900.00");
+  await page.unroute(accountPage);
   await pay
     .getByRole("combobox", { name: "Bank or cash account", exact: true })
     .selectOption({ label: "Cash" });
@@ -389,7 +519,9 @@ test("Owner records a quick receipt and a supplier payment with voucher PDFs", a
   await pay
     .getByRole("button", { name: "Record payment", exact: true })
     .click();
-  await expect(pay.getByRole("status")).toContainText("Voucher recorded.");
+  await expect(
+    pay.getByRole("status").filter({ hasText: "Voucher recorded." }),
+  ).toBeVisible();
 
   const customers = page.locator("#customer-balances");
   const suppliers = page.locator("#supplier-balances");

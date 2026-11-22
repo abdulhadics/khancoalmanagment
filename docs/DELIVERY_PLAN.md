@@ -1,5 +1,23 @@
 # KhanCoalSupplier delivery plan
 
+## Project status on 22 November 2026
+
+The project is a Windows-native replacement for the coal dispatch and accounting workspace. PostgreSQL is the live database. The Owner can save business data in one encrypted backup archive and restore it to a fresh database.
+
+| Work | Status | Evidence |
+| --- | --- | --- |
+| M0–M3 · Foundation, accounts, master data | Implemented | Windows app, PostgreSQL migrations, staff roles, sign-in and two-factor authentication, company settings, customers, suppliers, and mines |
+| M4–M6 · Dispatch, payments, ledgers | Implemented | Atomic bulk dispatches, exact pricing, revisions and reversals, receipts, cheque handling, vouchers, and customer and supplier balances |
+| M7–M9 · Reports, dashboard, administration | Implemented | Five reports with PDF and CSV, reconciled dashboard totals, period locks, audit log, integrity checks, and a successful encrypted restore drill |
+| M10 · Release hardening | In progress | The current Windows build passed lint, type-checking, 73 unit tests, 83 PostgreSQL integration tests, seven Edge workflows, and five staff workflows each in Firefox and WebKit. The local installer preflight and encrypted restore drill passed in earlier runs. |
+| M11 · Urdu and Pashto | Queued | Translation, right-to-left layouts, and bilingual print work follow the M10 release gate and require native-speaker review. |
+
+The latest 100,000-order rerun completed 440 measured page requests. Sales Details and Sales Report reached 0.530 and 0.237 seconds at the 95th percentile with ten concurrent sessions. Account and Dashboard still exceed the two-second target at 2.150 and 2.400 seconds. The money module and the three targeted ledger modules reached full coverage in their respective suites. [Performance evidence](PERFORMANCE.md) · [Test evidence](TEST_PLAN.md)
+
+The usability review added focus and screen-reader descriptions for invalid dispatch fields, confirmation before leaving unsaved work through the sidebar, and status and retry feedback for Account balance lookups. Large Sales directories now open a searchable chooser that keeps the selected party when the report changes. The local preview was verified through first sign-in at phone width in Edge, Firefox, and WebKit.
+
+The deployment rehearsal requires an authorized Windows Server or VM with service and Task Scheduler permissions, a test HTTPS hostname, and a test SMTP relay. The rehearsal covers installation, restart, update and rollback, email delivery, and scheduled recovery. [Windows Server runbook](RUNBOOK.md)
+
 Each milestone ends with a runnable repository, passing checks relevant to the implemented work, and a focused commit. The planning package is committed before M0. The final release gate includes evidence from a native Windows Server rehearsal, a real PostgreSQL run, and a backup and restore drill.
 
 ## Milestones

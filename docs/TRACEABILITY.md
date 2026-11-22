@@ -25,12 +25,12 @@ This record maps the functional specification to implementation and verification
 | 6 and 8 | Runtime configuration, browser headers, restricted PostgreSQL profile, and native CI | `src/proxy.ts`, `src/server/config/env.ts`, `scripts/grant-database-access.sql`, `.github/workflows/ci.yml` | Configuration tests, checked database grants, local Windows builds and tests. The workflow configures clean Windows runner checks. |
 | 8 | Windows service install, staged updates and rollback, request logging and probes | `scripts/install.ps1`, `deploy.ps1`, `src/server/observability`, [Windows Server runbook](RUNBOOK.md) | Local PowerShell and Caddy checks, request-observability tests. Rehearsal under the deployment account remains open. |
 | 6 and 8 | Dependency, secret, and security verification | [Security checklist](SECURITY_CHECKLIST.md), [API contract](API.md), `.github/workflows/ci.yml` | Local npm audit and gitleaks checks. Hosted CI and target Windows Server evidence remain open. |
-| 7 and 8 | Response times and financial reconciliation at 100,000 orders | `scripts/benchmark-postgres-windows.ps1`, `src/server/dashboard/workspace.ts`, `src/server/reporting/sales-facts.ts`, `src/server/account/workspace.ts` | [Local baseline and optimized benchmark](PERFORMANCE.md). All measured pages met two seconds at one session. Four pages exceeded two seconds at ten sessions. |
-| 7 and 8 | Accessible layouts and financial test coverage | `tests/e2e/accessibility.spec.ts`, native PostgreSQL tests, unit and integration V8 reports | [Local test evidence](TEST_PLAN.md). Edge scans and keyboard checks passed. Cross-browser and manual screen-reader verification and full ledger branch coverage remain open. |
+| 7 and 8 | Response times and financial reconciliation at 100,000 orders | `scripts/benchmark-postgres-windows.ps1`, `src/server/dashboard/workspace.ts`, `src/server/reporting/sales-facts.ts`, `src/server/account/workspace.ts` | [Local baseline and optimized benchmark](PERFORMANCE.md). All measured pages met two seconds at one session. Account and Dashboard exceeded two seconds at ten sessions in the latest run. |
+| 7 and 8 | Accessible layouts and financial test coverage | `tests/e2e/accessibility.spec.ts`, native PostgreSQL tests, unit and integration V8 reports | [Local test evidence](TEST_PLAN.md). Edge scans and keyboard checks passed. Three targeted ledger modules reached 100% statement, branch, and function coverage. Manual screen-reader verification remains open. |
 
 ## Remaining release evidence
 
 | Milestone | Required evidence |
 | --- | --- |
-| M10 | Authorized Windows Server rehearsal, production TLS and email, concurrent latency and capacity, ledger coverage, cross-browser and manual accessibility, and final release assessment |
+| M10 | Authorized Windows Server rehearsal, production TLS and email, concurrent latency and capacity, broader browser and manual accessibility coverage, and final release assessment |
 | M11 | Urdu and Pashto, right-to-left browsing, bilingual printing, and native-speaker review |

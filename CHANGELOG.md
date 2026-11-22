@@ -13,3 +13,5 @@
 - Added the dashboard with period filters, report-matched sales totals, monthly comparisons, outstanding balances, and recent activity.
 - Added Owner-only accounting period controls, audit history, reconciliation tools, and encrypted database backup and recovery.
 - Added Windows release staging and installer preflight, lightweight request diagnostics, and broader accessibility and performance checks. Reduced repeated dashboard and account ledger queries.
+- Added search for large Sales party directories and reduced repeated ledger scans in Account and Dashboard. Account now ranks outstanding balances by amount.
+- Added dispatch error focus and descriptions, a sidebar warning for unsaved work, and loading and retry feedback for payment balance lookups.

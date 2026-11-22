@@ -45,6 +45,7 @@ export const orders = {
   totals: "Batch totals",
   save: "Add all orders",
   saving: "Saving…",
+  reviewRows: "Review the marked dispatch fields, then try again.",
   saved: (count: number) =>
     `${count} ${count === 1 ? "order" : "orders"} saved.`,
   savedView: "View orders for this date",

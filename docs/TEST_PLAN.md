@@ -48,12 +48,34 @@ Verify WCAG 2.1 AA through automated checks and manual keyboard, visible focus, 
 
 The accessibility browser spec scans 28 desktop screens, six phone-width screens and two open dialogs with the axe-core WCAG 2.0 and 2.1 A and AA rules. It also checks horizontal reflow at 390 px, the skip link and keyboard opening, Escape and focus restoration for mobile navigation and Quick Receive. Run it against the local test environment with `npm run test:e2e:prepared -- tests/e2e/accessibility.spec.ts`.
 
+Set `PLAYWRIGHT_BROWSER` to `chromium`, `firefox` or `webkit`. Chromium defaults to the installed Edge channel. Set `PLAYWRIGHT_CHROMIUM_CHANNEL=chrome` to use installed Chrome. Set `PLAYWRIGHT_APP_PORT` to override the default loopback port 3147. The native database test harness provisions a fresh database for each run when `RUN_BROWSER_TESTS=1`.
+
+Install the Firefox and WebKit builds pinned by the repo's Playwright version. The same browser cache setting must be present when running their tests.
+
+```powershell
+$env:PLAYWRIGHT_BROWSERS_PATH = 'D:\KhanCoal-QA-Browsers'
+npm.cmd exec -- playwright install firefox webkit
+```
+
 With synthetic data on Windows Server, verify that one service starts after reboot and recovers from process failure. Run the scheduled encrypted backup and observe retention settings. Restore a copy in a designated test database, verify the identity/recovery runbook, compare counts and financial results and record measured RPO and RTO against 24 hours and 4 hours. Verify the update and rollback paths using previous and current builds.
 
 At each milestone record commands, exit status, test summaries and known gaps. At release, map every accepted requirement to code and test evidence. Record planned, passing, failing or explicitly deferred results and the evidence reference.
 
 ## Local test evidence
 
-The Windows run passed 73 unit tests, 79 native PostgreSQL integration tests, and six Edge workflows. The Edge workflows included all 36 automated accessibility scans and the mobile keyboard checks.
+The current Windows build passed lint, type-checking, the production build, 73 unit tests, and 83 native PostgreSQL integration tests.
 
-Combined V8 coverage for `src/domain` and `src/server`, merged by source location, was 85.98% of statements, 88.47% of lines, and 76.73% of branches. The money module reached 100% on all four V8 measures. Party ledger, cash movement, and balance rollup modules still have uncovered branches. Full ledger coverage remains a release gate.
+The browser checks ran on Windows 11 Enterprise build 26300 with PostgreSQL 17.12 and Playwright 1.65.1.
+
+| Browser | Build tested | Result |
+| --- | --- | --- |
+| Microsoft Edge 158.0.4370.33 | `e167301` | Six workflows passed, including 36 accessibility scans and mobile keyboard checks. |
+| Google Chrome 156.0.8078.74 | `e167301` | Six workflows passed, including 36 accessibility scans and mobile keyboard checks. |
+| Microsoft Edge 158.0.4370.33 | 22 November HCI build | Seven workflows passed, including the 36 accessibility scans, the Sales chooser scan, and the dispatch and balance recovery checks. |
+| Playwright Firefox 159.0 | 22 November HCI build | Five staff workflows passed across the Sales chooser, role access, company setup, dispatch, and payments. |
+| Playwright WebKit 27.2 | 22 November HCI build | The same five staff workflows passed on Windows. |
+| Edge 158.0, Firefox 159.0, and Playwright WebKit 27.2 | Local preview | First sign-in and mandatory password-change screen passed at 390 px without horizontal overflow. |
+
+Combined V8 coverage for `src/domain` and `src/server`, merged by source location, was 85.30% of statements, 87.70% of lines, and 76.55% of branches. The money module reached 100% on all four V8 measures. The PostgreSQL suite reached 100% of statements, branches, and functions in the party ledger, cash movement, and party balance rollup modules.
+
+The usability checks cover opening and closing the large Sales party chooser by keyboard, preserving its selection across navigation, retaining an unsaved dispatch when the user cancels navigation, moving focus to an invalid dispatch field, and recovering from an interrupted balance lookup before saving a payment. Automated accessibility scans and keyboard tests complement the manual screen-reader and native Safari checks required for release.

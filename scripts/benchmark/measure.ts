@@ -3,6 +3,7 @@ import { spawn } from "node:child_process";
 import { randomBytes, randomUUID } from "node:crypto";
 import { once } from "node:events";
 import { writeFile } from "node:fs/promises";
+import { get } from "node:http";
 import { createRequire } from "node:module";
 import { cpus, release, totalmem } from "node:os";
 import { setTimeout } from "node:timers/promises";
@@ -114,7 +115,12 @@ async function measure(
   };
 }
 
-async function visit(origin: string, route: Route, { token }: Staff) {
+async function visit(
+  origin: string,
+  route: Route,
+  { token }: Staff,
+  inspectDocument = false,
+) {
   const response = await fetch(`${origin}${route.path}`, {
     headers: { cookie: `kc_session=${token}` },
     redirect: "manual",
@@ -137,6 +143,12 @@ async function visit(origin: string, route: Route, { token }: Staff) {
       html.includes(`<h1>${route.heading}</h1>`),
       `${route.name} heading missing`,
     );
+    if (inspectDocument) {
+      return {
+        responseBytes: Buffer.byteLength(html),
+        selectOptions: Array.from(html.matchAll(/<option(?:\s|>)/g)).length,
+      };
+    }
   } else {
     assert.ok(
       (await response.arrayBuffer()).byteLength,
@@ -145,19 +157,26 @@ async function visit(origin: string, route: Route, { token }: Staff) {
   }
 }
 
+function probeServer(origin: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    const request = get(
+      `${origin}/healthz`,
+      { signal: AbortSignal.timeout(1_000), headers: { connection: "close" } },
+      (response) => {
+        response.once("end", () => resolve(response.statusCode === 200));
+        response.once("error", () => resolve(false));
+        response.resume();
+      },
+    );
+    request.once("error", () => resolve(false));
+  });
+}
+
 async function waitForServer(origin: string, server: ReturnType<typeof spawn>) {
   const deadline = Date.now() + 30_000;
   while (Date.now() < deadline) {
     if (server.exitCode !== null || server.signalCode !== null) break;
-    try {
-      const response = await fetch(`${origin}/healthz`, {
-        signal: AbortSignal.timeout(1_000),
-      });
-      await response.arrayBuffer();
-      if (response.ok) return;
-    } catch {
-      // The process is still starting.
-    }
+    if (await probeServer(origin)) return;
     await setTimeout(250);
   }
   throw new Error("The benchmark's local Next.js server did not start.");
@@ -251,20 +270,22 @@ async function benchmark(port: number, rounds: number, fixtureLoadMs: number) {
     ];
     const typical = [];
     for (const route of routes) {
+      let document;
       try {
-        await visit(origin, route, owner);
+        document = await visit(origin, route, owner, true);
       } catch (error) {
         console.warn(`Warmup for ${route.name} failed: ${failureLabel(error)}`);
       }
       typical.push({
         name: route.name,
+        ...document,
         one: await measure(rounds, [owner], (user) =>
           visit(origin, route, user),
         ),
         ten: await measure(rounds, staff, (user) => visit(origin, route, user)),
       });
       const { one, ten } = typical[typical.length - 1];
-      console.log(`Measured ${route.name}`, { one, ten });
+      console.log(`Measured ${route.name}`, { ...document, one, ten });
     }
 
     const broadRoutes: Route[] = [

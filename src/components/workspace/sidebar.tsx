@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronDown, Menu, Truck, X } from "lucide-react";
-import Link from "next/link";
+import Link, { type LinkProps } from "next/link";
 import { usePathname } from "next/navigation";
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -20,17 +20,28 @@ function SidebarNav({
   const pathname = usePathname();
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
+  const handleNavigation: NonNullable<LinkProps["onNavigate"]> = (event) => {
+    if (
+      document.querySelector("main form[data-dirty]") &&
+      !window.confirm(common.leaveDraft)
+    ) {
+      event.preventDefault();
+      return;
+    }
+    onNavigate?.();
+  };
+
   function linkProps(item: Destination) {
     return {
       href: item.href,
       "aria-current": item.href === pathname ? ("page" as const) : undefined,
-      onClick: onNavigate,
+      onNavigate: handleNavigation,
     };
   }
 
   return (
     <>
-      <Link href="/" className="workspace-brand" onClick={onNavigate}>
+      <Link href="/" className="workspace-brand" onNavigate={handleNavigation}>
         <span className="brand-mark">
           <Truck aria-hidden="true" size={20} strokeWidth={2.2} />
         </span>

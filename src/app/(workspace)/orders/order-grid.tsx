@@ -7,6 +7,7 @@ import {
   startTransition,
   useActionState,
   useEffect,
+  useId,
   useRef,
   useState,
   useTransition,
@@ -237,6 +238,8 @@ function GridForm({
     localId: number;
   } | null>(null);
   const [submittedRows, setSubmittedRows] = useState<number[]>([]);
+  const validationId = useId();
+  const batchForm = useRef<HTMLFormElement>(null);
   const nextId = useRef(2);
   const dirty = rows.some((row) =>
     Object.keys(t.fields).some((field) =>
@@ -264,6 +267,17 @@ function GridForm({
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
   }, [dirty, pending]);
+
+  useEffect(() => {
+    if (pending || !state.issues?.length) return;
+    const form = batchForm.current;
+    const invalid = form?.querySelector<HTMLElement>(
+      '[aria-invalid="true"]:not(:disabled)',
+    );
+    (
+      invalid ?? form?.querySelector<HTMLElement>("[data-batch-validation]")
+    )?.focus();
+  }, [pending, state.issues]);
 
   function updateRow(localId: number, updates: Partial<DraftFields>) {
     setRows((current) =>
@@ -407,6 +421,7 @@ function GridForm({
       aria-labelledby="order-grid-title"
     >
       <form
+        ref={batchForm}
         method="post"
         onSubmit={(event) => {
           event.preventDefault();
@@ -415,6 +430,7 @@ function GridForm({
           startTransition(() => action(form));
         }}
         aria-busy={pending}
+        data-dirty={dirty || undefined}
         onKeyDown={(event) => {
           if ((event.altKey || event.ctrlKey) && event.key === "Enter") {
             event.preventDefault();
@@ -506,12 +522,24 @@ function GridForm({
           })}
           readOnly
         />
+        {state.issues?.some(({ row }) => row !== undefined) && (
+          <p
+            role="alert"
+            tabIndex={-1}
+            data-batch-validation
+            className="px-5 py-2 text-sm text-negative"
+          >
+            {t.reviewRows}
+          </p>
+        )}
         {state.issues
           ?.filter(({ row }) => row === undefined)
           .map(({ code }, index) => (
             <p
               key={index}
               role="alert"
+              tabIndex={-1}
+              data-batch-validation
               className="px-5 py-2 text-sm text-negative"
             >
               {t.errors[code]}
@@ -530,6 +558,12 @@ function GridForm({
               ) ?? [];
             const issueFor = (field: string) =>
               problems.find((issue) => issue.field === field);
+            const issueId = (key: keyof typeof t.fields) =>
+              `${validationId}-${row.localId}-${key}`;
+            const feedback = (key: keyof typeof t.fields) => ({
+              "aria-invalid": Boolean(issueFor(key)),
+              "aria-describedby": issueFor(key) ? issueId(key) : undefined,
+            });
             const name = (field: keyof typeof t.fields) =>
               `${t.fields[field]} ${index + 1}`;
             const field = (key: keyof typeof t.fields, child: ReactNode) => {
@@ -546,7 +580,7 @@ function GridForm({
                   </span>
                   {child}
                   {issue && (
-                    <span className="text-xs text-negative">
+                    <span id={issueId(key)} className="text-xs text-negative">
                       {t.errors[issue.code]}
                     </span>
                   )}
@@ -564,7 +598,7 @@ function GridForm({
                   className={fieldClass}
                   value={row[key]}
                   aria-label={name(key)}
-                  aria-invalid={Boolean(issueFor(key))}
+                  {...feedback(key)}
                   inputMode={mode}
                   maxLength={max}
                   disabled={pending}
@@ -588,7 +622,7 @@ function GridForm({
                     <div className="flex min-w-0 gap-1.5">
                       <select
                         aria-label={name("customerId")}
-                        aria-invalid={Boolean(issueFor("customerId"))}
+                        {...feedback("customerId")}
                         className={fieldClass}
                         value={row.customerId}
                         onChange={(event) =>
@@ -624,7 +658,7 @@ function GridForm({
                     <div className="flex min-w-0 gap-1.5">
                       <select
                         aria-label={name("supplierId")}
-                        aria-invalid={Boolean(issueFor("supplierId"))}
+                        {...feedback("supplierId")}
                         className={fieldClass}
                         value={row.supplierId}
                         disabled={sameSupplier && index > 0}
@@ -658,7 +692,7 @@ function GridForm({
                     "mineId",
                     <select
                       aria-label={name("mineId")}
-                      aria-invalid={Boolean(issueFor("mineId"))}
+                      {...feedback("mineId")}
                       className={fieldClass}
                       value={row.mineId}
                       disabled={!row.supplierId || (sameMine && index > 0)}

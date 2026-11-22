@@ -39,6 +39,10 @@ All report and details exports accept `year`, `month`, `from`, and `to`. Months 
 
 Exports cover the selected filters across pages and ignore `page` and `pageSize`. PDFs accept up to 1,000 result rows and CSVs accept up to 10,000. Narrow filters after an export exceeds its limit. Ledger balances include the full signed movement for the party before tab or search display filters.
 
+## Sales party lookup
+
+`GET /reports/party-options?kind=customer|supplier&q=...` searches party names and codes for signed-in staff with report access. It returns up to 20 options and a flag indicating whether more matches exist. Inactive parties remain available for historical reporting. Responses use `Cache-Control: private, no-store`.
+
 ## Browser mutations
 
 The browser submits form mutations through Next.js Server Actions. Their generated action identifiers are build-specific. The actions check the expected origin and validate input on the server. Protected actions resolve live session and role permissions again before mutation. Order batches and payment writes support retry-safe request identifiers. Record scope and period locks are checked inside the financial transaction.

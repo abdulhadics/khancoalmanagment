@@ -29,6 +29,9 @@ function salesMeasureAggregate(textDecimals: boolean) {
 
 export const summedSalesMeasures = salesMeasureAggregate(true);
 
+const signedSaleCount = Prisma.sql`CASE WHEN entry.reverses_id IS NULL THEN 1 ELSE -1 END`;
+const signedSaleWeight = Prisma.sql`CASE WHEN entry.reverses_id IS NULL THEN revision.weight ELSE -revision.weight END`;
+
 // Both sides contribute their own signed posted amount. Count each dispatch
 // and its weight once, from the sales side, including zero-rated dispatches.
 export function signedSalesFacts(filter: SalesFactFilter = {}) {
@@ -59,12 +62,8 @@ export function signedSalesFacts(filter: SalesFactFilter = {}) {
       revision.customer_id,
       revision.supplier_id,
       revision.mine_id,
-      CASE WHEN entry.kind = 'ORDER_SALE' THEN
-        CASE WHEN entry.reverses_id IS NULL THEN 1 ELSE -1 END
-        ELSE 0 END AS trucks,
-      CASE WHEN entry.kind = 'ORDER_SALE' THEN
-        CASE WHEN entry.reverses_id IS NULL THEN revision.weight ELSE -revision.weight END
-        ELSE 0 END AS weight,
+      CASE WHEN entry.kind = 'ORDER_SALE' THEN ${signedSaleCount} ELSE 0 END AS trucks,
+      CASE WHEN entry.kind = 'ORDER_SALE' THEN ${signedSaleWeight} ELSE 0 END AS weight,
       CASE WHEN entry.kind = 'ORDER_SALE' THEN entry.amount ELSE 0 END AS sales,
       CASE WHEN entry.kind = 'ORDER_PURCHASE' THEN entry.amount ELSE 0 END AS purchases
     FROM ledger_entries AS entry
@@ -122,6 +121,12 @@ export async function readSalesTimeline<Key extends string>(
         Prisma.sql`(${key}::text, ${from ?? null}::date, ${to}::date)`,
     ),
   );
+  const dates = Prisma.join(
+    businessDateConditions(Prisma.sql`entry.business_date`, { to: through }),
+    " AND ",
+  );
+  // The ledger FK guarantees a revision for every purchase posting. Only the
+  // sale posting needs the revision to read weight in this date-only rollup.
   const rows = await tx.$queryRaw<
     (Omit<SalesTotals, "trucks"> & {
       key: string;
@@ -131,7 +136,17 @@ export async function readSalesTimeline<Key extends string>(
   >`
     WITH daily AS MATERIALIZED (
       SELECT business_date, ${salesMeasureAggregate(false)}
-      FROM (${signedSalesFacts({ to: through })}) AS facts
+      FROM (
+        SELECT entry.business_date, ${signedSaleCount} AS trucks,
+          ${signedSaleWeight} AS weight, entry.amount AS sales, 0 AS purchases
+        FROM ledger_entries AS entry
+        JOIN order_revisions AS revision ON revision.id = entry.order_revision_id
+        WHERE entry.kind = 'ORDER_SALE' AND ${dates}
+        UNION ALL
+        SELECT entry.business_date, 0, 0, 0, entry.amount
+        FROM ledger_entries AS entry
+        WHERE entry.kind = 'ORDER_PURCHASE' AND ${dates}
+      ) AS facts
       GROUP BY business_date
     )
     SELECT 'window' AS kind, requested.key, ${summedSalesMeasures}
