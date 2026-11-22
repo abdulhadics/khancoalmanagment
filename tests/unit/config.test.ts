@@ -25,6 +25,27 @@ describe("deployment configuration", () => {
     });
   });
 
+  it.each(["production", "preview"])(
+    "requires production configuration on Vercel %s",
+    (VERCEL_ENV) => {
+      expect(() =>
+        readEnvironment({
+          VERCEL: "1",
+          VERCEL_ENV,
+          DEPLOYMENT_ENV: "development",
+        }),
+      ).toThrow(/APP_ORIGIN.*DATABASE_URL/);
+    },
+  );
+
+  it("keeps local configuration for Vercel CLI development", () => {
+    expect(
+      readEnvironment({ VERCEL: "1", VERCEL_ENV: "development" }),
+    ).toMatchObject({
+      DEPLOYMENT_ENV: "development",
+    });
+  });
+
   it("uses the configured port in the default local origin", () => {
     expect(readEnvironment({ APP_PORT: "3010" }).APP_ORIGIN).toBe(
       "http://127.0.0.1:3010",

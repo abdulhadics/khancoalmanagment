@@ -30,7 +30,26 @@ For the first Owner, provide `OWNER_EMAIL`, `OWNER_USERNAME`, `OWNER_DISPLAY_NAM
 
 Production uses a separate `MIGRATION_DATABASE_URL` for schema changes and a restricted `DATABASE_URL` for application access. After migrating, connect `psql` to the application database as the schema owner and apply the grants with `-v ON_ERROR_STOP=1 -v application_role=khancoal_app -f scripts/grant-database-access.sql`. Replace `khancoal_app` with the name of the existing application login. Keep database credentials outside Git.
 
-Production sign-in requires an HTTPS `APP_ORIGIN`, a 32-byte base64url `AUTH_ENCRYPTION_KEY`, and `SMTP_URL` and `SMTP_FROM` for recovery email. The first Owner changes the temporary password and enrolls an authenticator before accessing the production workspace. Keep the key available across app restarts. Terminate TLS at the local reverse proxy, preserve the public Host, and set `X-KC-Client-IP` to the actual client address at the proxy so audit and throttle records can use it.
+Production sign-in requires an HTTPS `APP_ORIGIN`, a 32-byte base64url `AUTH_ENCRYPTION_KEY`, and `SMTP_URL` and `SMTP_FROM` for recovery email. The first Owner changes the temporary password and enrolls an authenticator before accessing the production workspace. Keep the key available across app restarts. On Windows Server, terminate TLS at the local reverse proxy, preserve the public Host, and set `X-KC-Client-IP` to the actual client address at the proxy so audit and throttle records can use it.
+
+## Deploy the web app on Vercel
+
+1. Provision a managed PostgreSQL database reachable from Vercel. Apply `npm run db:migrate` from a trusted machine with `MIGRATION_DATABASE_URL` set, grant the restricted application login using the SQL above, and seed the first Owner with `npm run db:seed-owner` using that login's `DATABASE_URL`. Keep the migration connection and Owner bootstrap credentials in the maintenance environment.
+2. [Import the GitHub repository](https://vercel.com/docs/git/vercel-for-github) and select Next.js, the repository root, and Node.js 22.x or 24.x. Use `npm ci` for installation and `npm run build` for the build. Installation generates the Prisma client. Enable automatic exposure of [Vercel system environment variables](https://vercel.com/docs/environment-variables/system-environment-variables) for the platform client IP header handling.
+3. In the Vercel Production environment, set the variables below. Use a separate database and encryption key for a Preview deployment that staff can sign in to. Give each environment its own `APP_ORIGIN` matching the hostname used in the browser.
+
+| Variable              | Value                                                                                                                                                                      |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DEPLOYMENT_ENV`      | `production`                                                                                                                                                               |
+| `APP_ORIGIN`          | The chosen HTTPS address without a path, such as `https://your-project.vercel.app`                                                                                         |
+| `DATABASE_URL`        | The TLS PostgreSQL connection string for the restricted application login. Use a provider pooler that supports PostgreSQL connection options and interactive transactions. |
+| `AUTH_ENCRYPTION_KEY` | A stable secret generated with `node -e "console.log(require('node:crypto').randomBytes(32).toString('base64url'))"`                                                       |
+| `SMTP_URL`            | An external SMTP relay, such as an `smtps://` URL on port 465. URL-encode relay credentials.                                                                               |
+| `SMTP_FROM`           | The verified sender address provided by the relay                                                                                                                          |
+
+4. Deploy and verify `/readyz` returns HTTP 200. Sign in at `APP_ORIGIN`, change the temporary password, and enroll an authenticator. Test password reset, a PDF export, and a representative dispatch and payment before inviting staff.
+
+The in-app encrypted backup download and backup scheduler require the Windows Server setup. On Vercel, configure managed PostgreSQL backups and verify a restore in a separate database. Review the [capacity results](docs/PERFORMANCE.md#22-november-local-500000-order-run) before using the hosted app for live operations.
 
 ## Checks
 

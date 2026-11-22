@@ -110,10 +110,18 @@ const environment = z
     }
   });
 
-export function readEnvironment(
-  values: Readonly<Record<string, string | undefined>> = process.env,
-) {
-  const parsed = environment.safeParse(values);
+type EnvironmentValues = Readonly<Record<string, string | undefined>>;
+
+export function isVercelDeployment(values: EnvironmentValues = process.env) {
+  return values.VERCEL === "1" && values.VERCEL_ENV !== "development";
+}
+
+export function readEnvironment(values: EnvironmentValues = process.env) {
+  const parsed = environment.safeParse(
+    isVercelDeployment(values)
+      ? { ...values, DEPLOYMENT_ENV: "production" }
+      : values,
+  );
   if (!parsed.success) {
     const messages = parsed.error.issues.map(
       ({ path, message }) => `${path.join(".")}. ${message}`,

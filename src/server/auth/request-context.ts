@@ -2,7 +2,7 @@ import { isIP } from "node:net";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
-import { readEnvironment } from "../config/env";
+import { isVercelDeployment, readEnvironment } from "../config/env";
 import {
   internalRequestIdHeader,
   requestIdFromHeader,
@@ -31,7 +31,9 @@ export async function assertActionOrigin() {
 export async function getRequestContext() {
   const request = await headers();
   const deployed = readEnvironment().DEPLOYMENT_ENV === "production";
-  const proxyAddress = request.get("x-kc-client-ip");
+  const proxyAddress = request.get(
+    isVercelDeployment() ? "x-vercel-forwarded-for" : "x-kc-client-ip",
+  );
   const ip =
     deployed && proxyAddress && isIP(proxyAddress) ? proxyAddress : undefined;
   return {
