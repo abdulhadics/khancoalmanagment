@@ -92,6 +92,6 @@ export async function seedFirstOwner(
       });
       return "created";
     },
-    { isolationLevel: "ReadCommitted" },
+    { isolationLevel: "ReadCommitted", maxWait: 20_000, timeout: 20_000 },
   );
 }

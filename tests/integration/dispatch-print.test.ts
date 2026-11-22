@@ -13,9 +13,10 @@ import {
 } from "../../src/server/orders/print";
 
 type Database = ReturnType<typeof makePrisma>;
-const now = new Date("2026-11-22T19:03:00.000Z");
-const day = "2026-11-23";
-const previousDay = "2026-11-22";
+// Keep the all-orders register clear of fixtures that use the current day.
+const now = new Date("2012-11-22T19:03:00.000Z");
+const day = "2012-11-23";
+const previousDay = "2012-11-22";
 const date = new Date(`${day}T00:00:00.000Z`);
 const tag = randomBytes(4).toString("hex");
 const request = { requestId: randomUUID(), ipAddress: "192.0.2.135" };
