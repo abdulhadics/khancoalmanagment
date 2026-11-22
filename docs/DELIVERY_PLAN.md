@@ -14,6 +14,8 @@ The project is a Windows-native replacement for the coal dispatch and accounting
 
 The latest 100,000-order rerun completed 440 measured page requests. Sales Details and Sales Report reached 0.530 and 0.237 seconds at the 95th percentile with ten concurrent sessions. Account and Dashboard still exceed the two-second target at 2.150 and 2.400 seconds. The money module and the three targeted ledger modules reached full coverage in their respective suites. [Performance evidence](PERFORMANCE.md) · [Test evidence](TEST_PLAN.md)
 
+The 500,000-order local run recorded 184 HTTP 500 responses in 440 typical requests. Dashboard timed out even with one session. Account and the customer and supplier summaries produced errors with ten concurrent sessions. The separate accounting comparison matched and the integrity scan returned zero findings. Capacity remains a release blocker. [500,000-order measurements](PERFORMANCE.md#22-november-local-500000-order-run)
+
 The usability review added focus and screen-reader descriptions for invalid dispatch fields, confirmation before leaving unsaved work through the sidebar, and status and retry feedback for Account balance lookups. Large Sales directories now open a searchable chooser that keeps the selected party when the report changes. The local preview was verified through first sign-in at phone width in Edge, Firefox, and WebKit.
 
 The deployment rehearsal requires an authorized Windows Server or VM with service and Task Scheduler permissions, a test HTTPS hostname, and a test SMTP relay. The rehearsal covers installation, restart, update and rollback, email delivery, and scheduled recovery. [Windows Server runbook](RUNBOOK.md)

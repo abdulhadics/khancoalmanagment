@@ -71,3 +71,22 @@ The Windows rerun used 100,000 orders, 10,000 payments, five single-session requ
 | Dashboard | 2.342 s | 2.400 s |
 
 The Sales screens now search large party directories on demand. On this fixture the Sales Details response rendered 17 select options and the Sales Report rendered 22. Those counts include the standalone month, page size, and grouping controls. Account reuses one ledger balance snapshot and sorts amounts numerically. Dashboard's date rollup reads revision weights for sales entries only. Account and Dashboard still exceed two seconds at ten sessions, and capacity testing on the deployment host remains open.
+
+## 22 November local 500,000-order run
+
+The same production build ran on a Windows 11 development workstation with an i7-1185G7, eight logical CPUs, 32 GiB of RAM, Node 22.18.0, and PostgreSQL 17.12. The isolated database held 500,000 orders, 10,000 payments, and 1,006,829 journal entries. Typical date-filtered pages requested the 14 days ending 22 November 2026, with five requests per page at one session and fifty at ten sessions.
+
+| Page | Single-session p95 | Single-session errors | Ten-session p95 | Ten-session errors |
+| --- | ---: | ---: | ---: | ---: |
+| Dashboard | — | 5/5 | — | 50/50 |
+| Sales Details search and page 2 | 1.146 s | 0/5 | 3.974 s | 0/50 |
+| Account | 3.840 s | 0/5 | — | 50/50 |
+| Sales Report | 0.320 s | 0/5 | 1.486 s | 0/50 |
+| Customers Report | 1.485 s | 0/5 | 5.054 s | 36/50 |
+| Single Customer Report | 1.573 s | 0/5 | 4.225 s | 0/50 |
+| Suppliers Report | 1.543 s | 0/5 | 5.625 s | 43/50 |
+| Single Supplier Report | 0.591 s | 0/5 | 1.988 s | 0/50 |
+
+Percentiles use successful requests. There were 184 HTTP 500 responses from 440 typical requests and three more from the all-time Dashboard. Logs showed transactions expiring against Prisma's five-second limit. Account returned about 1.26 MB of HTML with 4,311 select options. The all-time Sales Report, all-time Sales CSV, and 14-day Sales PDF each succeeded in all three requests. Posting twenty dispatches succeeded in all 55 attempts, with a ten-session p95 of 2.085 seconds.
+
+The separate Dashboard-to-Sales accounting comparison matched exactly and the integrity scan returned zero findings. Release work remains on the report queries and large party lists, followed by a capacity rerun on the deployment host. The runner now retains the JSON report when a measured operation or verification fails and exits with an error after writing it.

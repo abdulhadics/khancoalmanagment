@@ -9,6 +9,7 @@ import { cpus, release, totalmem } from "node:os";
 import { setTimeout } from "node:timers/promises";
 
 import { parseBusinessDate, todayBusinessDate } from "@/domain/business-date";
+import { Prisma } from "@/generated/prisma/client";
 import { getSession, issueSession } from "@/server/auth/session";
 import { hashPassword } from "@/server/auth/password";
 import { readDashboard } from "@/server/dashboard/workspace";
@@ -88,7 +89,18 @@ function distribution(samples: readonly number[]) {
 
 function failureLabel(error: unknown) {
   if (!(error instanceof Error)) return "Unknown benchmark failure";
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    return `${error.name} (${error.code})`;
+  }
   return `${error.name}: ${error.message.trim().split("\n")[0]}`;
+}
+
+async function verify<T>(name: string, work: () => Promise<T>) {
+  try {
+    return { value: await work(), error: null };
+  } catch (error) {
+    return { value: null, error: `${name}: ${failureLabel(error)}` };
+  }
 }
 
 async function measure(
@@ -318,31 +330,50 @@ async function benchmark(port: number, rounds: number, fixtureLoadMs: number) {
       });
     }
 
-    const [dashboard, sales] = await Promise.all([
-      readDashboard(database, owner.principal, { period: "custom", from, to }),
-      readSalesReportPage(database, owner.principal, {
-        groupBy: "date",
-        from,
-        to,
-      }),
-    ]);
-    assert.equal(dashboard.scope, "financial");
-    assert.deepEqual(dashboard.totals, sales.totals);
-    const integrity = await timed(() =>
-      readAccountingIntegrity(database, owner.principal),
+    const reconciliation = await verify(
+      "Dashboard and Sales totals",
+      async () => {
+        const [dashboard, sales] = await Promise.all([
+          readDashboard(database, owner.principal, {
+            period: "custom",
+            from,
+            to,
+          }),
+          readSalesReportPage(database, owner.principal, {
+            groupBy: "date",
+            from,
+            to,
+          }),
+        ]);
+        assert.equal(dashboard.scope, "financial");
+        assert.deepEqual(dashboard.totals, sales.totals);
+        return sales.totals;
+      },
     );
-    assert.deepEqual(integrity.result.findings, []);
-
-    const [plan] = await database.$queryRaw<
-      {
-        "QUERY PLAN": [
-          { Plan: object; "Planning Time": number; "Execution Time": number },
-        ];
-      }[]
-    >`
-      EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)
-      SELECT ${summedSalesMeasures} FROM (${signedSalesFacts({ from, to })}) AS facts
-    `;
+    const integrity = await verify("Accounting integrity", () =>
+      timed(() => readAccountingIntegrity(database, owner.principal)),
+    );
+    const salesPlan = await verify("Sales query plan", async () => {
+      const [plan] = await database.$queryRaw<
+        {
+          "QUERY PLAN": [
+            { Plan: object; "Planning Time": number; "Execution Time": number },
+          ];
+        }[]
+      >`
+        EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)
+        SELECT ${summedSalesMeasures} FROM (${signedSalesFacts({ from, to })}) AS facts
+      `;
+      return plan["QUERY PLAN"][0];
+    });
+    const verificationErrors = [
+      reconciliation.error,
+      integrity.error,
+      salesPlan.error,
+    ].filter((error) => error !== null);
+    if (integrity.value && integrity.value.result.findings.length > 0) {
+      verificationErrors.push("Accounting integrity reported findings.");
+    }
 
     async function post(staff: Staff) {
       const key = randomUUID();
@@ -370,6 +401,12 @@ async function benchmark(port: number, rounds: number, fixtureLoadMs: number) {
       one: await measure(rounds, [owner], post),
       ten: await measure(rounds, staff, post),
     };
+    const failedRequests = [
+      ...typical.flatMap(({ one, ten }) => [one, ten]),
+      ...broad,
+      posting.one,
+      posting.ten,
+    ].reduce((total, result) => total + result.failed, 0);
 
     const description = {
       measuredAt: new Date().toISOString(),
@@ -397,10 +434,13 @@ async function benchmark(port: number, rounds: number, fixtureLoadMs: number) {
       broad,
       posting,
       verification: {
-        salesTotals: sales.totals,
-        integrityFindings: integrity.result.total,
-        integrityMs: Math.round(integrity.milliseconds),
-        salesQueryPlan: plan["QUERY PLAN"][0],
+        salesTotals: reconciliation.value,
+        integrityFindings: integrity.value?.result.total ?? null,
+        integrityMs: integrity.value
+          ? Math.round(integrity.value.milliseconds)
+          : null,
+        salesQueryPlan: salesPlan.value,
+        errors: verificationErrors,
       },
     };
     const report = JSON.stringify(description, null, 2);
@@ -411,6 +451,10 @@ async function benchmark(port: number, rounds: number, fixtureLoadMs: number) {
     } else {
       console.log(report);
     }
+    const errors = [...verificationErrors];
+    if (failedRequests > 0)
+      errors.push(`${failedRequests} measured operations failed.`);
+    if (errors.length > 0) throw new Error(errors.join("\n"));
   } finally {
     if (server.exitCode === null && server.signalCode === null) {
       const stopped = once(server, "exit", {
