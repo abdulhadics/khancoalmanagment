@@ -16,6 +16,12 @@
 *.dump
 *.dump.age
 *.dump.age.partial
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.db.age
+*.db.age.partial
 *.backup
 *.pem
 *.key

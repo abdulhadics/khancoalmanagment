@@ -32,6 +32,16 @@ Production uses a separate `MIGRATION_DATABASE_URL` for schema changes and a res
 
 Production sign-in requires an HTTPS `APP_ORIGIN`, a 32-byte base64url `AUTH_ENCRYPTION_KEY`, and `SMTP_URL` and `SMTP_FROM` for recovery email. The first Owner changes the temporary password and enrolls an authenticator before accessing the production workspace. Keep the key available across app restarts. On Windows Server, terminate TLS at the local reverse proxy, preserve the public Host, and set `X-KC-Client-IP` to the actual client address at the proxy so audit and throttle records can use it.
 
+## Handover on the client's Windows machine
+
+The current build runs with PostgreSQL. The planned SQLite edition is tracked in the [SQLite handover decision](docs/SQLITE_HANDOVER.md). The [handover review](docs/DELIVERY_PLAN.md#handover-review) covers the daily workflow, current tests and release status.
+
+Run the app and PostgreSQL on a client-owned Windows host with persistent local disk. Staff on the host can use the app in a browser. For multiple staff devices, use the LAN-only HTTPS setup and have them open the same app address. PostgreSQL listens on the host's loopback interface. This setup requires no Vercel or hosted database subscription.
+
+Use the [Windows installation runbook](docs/RUNBOOK.md) to install the services. Configure the [daily encrypted backup](docs/BACKUP_RESTORE.md), and keep a copy on a separate drive or another client-approved destination. Each `.dump.age` file contains the business records, schema, staff identities, and audit history at the time of backup. The running PostgreSQL database uses a data directory. The client keeps the decryption identity and deployment configuration separately and uses the documented Owner recovery step after restoring.
+
+Before handover, verify service startup after reboot, HTTPS from a staff device, and a scheduled backup restored into a separate database. Compare the restored dispatch, payment, and ledger totals and check the response times at the client's expected workload. [Capacity findings](docs/PERFORMANCE.md#22-november-local-500000-order-run)
+
 ## Deploy the web app on Vercel
 
 1. Provision a managed PostgreSQL database reachable from Vercel. Apply `npm run db:migrate` from a trusted machine with `MIGRATION_DATABASE_URL` set, grant the restricted application login using the SQL above, and seed the first Owner with `npm run db:seed-owner` using that login's `DATABASE_URL`. Keep the migration connection and Owner bootstrap credentials in the maintenance environment.

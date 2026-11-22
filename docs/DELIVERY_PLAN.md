@@ -2,6 +2,34 @@
 
 ## Project status on 22 November 2026
 
+### Handover review
+
+KhanCoalSupplier supports a coal dispatch and accounts team on one shared system. It was built to tie each truckload to its mine, supplier, customer, rates, and weight, so the dispatch slip, customer receivable, supplier payable, and reports agree. The implementation uses Next.js for the browser app and server actions, Prisma and PostgreSQL for live persistence, and an append-only financial journal for audited accounting changes. Decimal arithmetic preserves PKR and weight precision. Staff permissions limit which actions and figures each role can see.
+
+| Step                    | Who                          | What they do                                                                                                                                                                             |
+| ----------------------- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Install and verify      | Host administrator           | Start the Windows app and database services, confirm `/readyz`, configure HTTPS and recovery email, and rehearse restore.                                                                |
+| Configure the workspace | Owner                        | Sign in, change the temporary password, enroll an authenticator, set company details and banks, and create staff accounts.                                                               |
+| Set up parties          | Owner or authorized staff    | Add customers, suppliers and mines. The Owner records opening balances and verifies them before daily posting.                                                                           |
+| Record dispatches       | Dispatch staff               | Enter the vehicle, parties, mine and weight, then record the rates or leave the order pending pricing. Verify the slip and post or correct the dispatch through the authorized workflow. |
+| Settle accounts         | Accountant                   | Record receipts and supplier payments, clear or bounce cheques where applicable, and issue vouchers. Verify customer and supplier balances.                                              |
+| Review and close        | Accountant and Owner         | Reconcile the dashboard and reports to the ledgers, review corrections and audit history, and lock completed periods.                                                                    |
+| Back up and recover     | Owner and host administrator | Verify the scheduled encrypted backup. Restore a copy into an isolated database and reconcile totals before using it for recovery.                                                       |
+
+Vercel built and deployed `de25faf`. Requests to `/` and `/login` returned HTTP 500, `/healthz` returned 200, and `/readyz` returned 503. This isolates a runtime readiness issue. Missing production configuration can reproduce the failure because the old session cookie lookup validates database and SMTP settings before it can route visitors to sign-in. Database reachability, permissions, and applied migrations can also affect readiness. Vercel runtime logs are needed to confirm the deployed exception. The application now decouples cookie selection from that validation and shows a sign-in retry state when readiness fails. [Vercel runtime logs](https://vercel.com/docs/logs/runtime)
+
+The client chose a local SQLite database with an encrypted cloud backup. The current working app still uses PostgreSQL and the SQLite snapshot tool has passed a disposable restore check. The SQLite business-data port, actual cloud mirror, and acceptance test on the client's Windows host are required before the requested handover is complete. The 500,000-order PostgreSQL test also exposed timeouts during concurrent reporting. [SQLite progress](SQLITE_HANDOVER.md) · [Windows runbook](RUNBOOK.md) · [Capacity findings](PERFORMANCE.md)
+
+| Verification                 | Result                                                                                                                                                                                                                                                                                                                |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Code checks                  | Clean install, lint, type-checking, 76 unit tests and production build passed.                                                                                                                                                                                                                                        |
+| PostgreSQL application flows | 83 integration tests passed, covering role enforcement, exact dispatch and payment posting, reversals, audit history, and reporting reconciliation.                                                                                                                                                                   |
+| Browser and HCI              | Seven Edge workflows passed again on the updated build, including automated accessibility scans, keyboard and mobile controls, unsaved dispatch recovery, invalid-field focus, balance retry, and PDF vouchers. The new unconfigured sign-in state passed keyboard retry, overflow and axe checks at 390 and 1440 px. |
+| Windows recovery             | The PostgreSQL backup drill decrypted and restored a separate database and reconciled the restored payment at PKR 168.74. The SQLite snapshot test recovered committed WAL entries with the source connection still open.                                                                                             |
+| Client acceptance            | SQLite integration, client-host installation and scheduled backup, manual screen-reader review, and a representative workload test remain open.                                                                                                                                                                       |
+
+For operating instructions, see the [staff user guide](USER_GUIDE.md). For validation evidence and scope, see the [test plan](TEST_PLAN.md).
+
 The project is a Windows-native replacement for the coal dispatch and accounting workspace. PostgreSQL is the live database. The Owner can save business data in one encrypted backup archive and restore it to a fresh database.
 
 | Work | Status | Evidence |
