@@ -50,7 +50,7 @@ function decoyPasswordHash() {
 export async function completePasswordStage(
   tx: Prisma.TransactionClient,
   state: LoginState,
-  production: boolean,
+  enforceOwnerTotp: boolean,
   now = new Date(),
 ): Promise<LoginTransition> {
   const { userId } = state;
@@ -67,7 +67,7 @@ export async function completePasswordStage(
       token: await issueAuthChallenge(tx, userId, "PASSWORD_CHANGE", now),
     };
   }
-  if (production && state.roleCode === "OWNER") {
+  if (enforceOwnerTotp && state.roleCode === "OWNER") {
     return {
       status: "totp_enrollment",
       token: await issueAuthChallenge(tx, userId, "TOTP_ENROLLMENT", now),
@@ -102,8 +102,8 @@ export async function loginWithPassword(
 ): Promise<LoginResult> {
   const db = database ?? getDatabase();
   const now = options.now ?? new Date();
-  const production =
-    options.production ?? readEnvironment().DEPLOYMENT_ENV === "production";
+  const enforceOwnerTotp =
+    options.production ?? readEnvironment().REQUIRE_OWNER_TOTP;
   const identifier =
     input.identifier.length <= 512 ? input.identifier.trim().toLowerCase() : "";
   const candidate =
@@ -175,7 +175,7 @@ export async function loginWithPassword(
         mustChangePassword: current.credential.mustChangePassword,
         hasTotp: current.credential.totpKeyId !== null,
       },
-      production,
+      enforceOwnerTotp,
       options.now ?? new Date(),
     );
     await appendAuditEvent(tx, {

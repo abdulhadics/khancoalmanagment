@@ -58,7 +58,7 @@ export async function getSession(
 ): Promise<SessionActor | null> {
   if (!isOpaqueToken(token)) return null;
   const db = database ?? getDatabase();
-  const production = readEnvironment().DEPLOYMENT_ENV === "production";
+  const enforceOwnerTotp = readEnvironment().REQUIRE_OWNER_TOTP;
   const idleCutoff = new Date(now.getTime() - SESSION_IDLE_MS);
 
   const [actor] = await db.$queryRaw<SessionActor[]>`
@@ -74,7 +74,7 @@ export async function getSession(
       AND current_session.last_used_at > ${idleCutoff}
       AND staff.is_active
       AND NOT credential.must_change_password
-      AND (NOT ${production}::boolean OR staff.role_code <> 'OWNER' OR credential.totp_key_id IS NOT NULL)
+      AND (NOT ${enforceOwnerTotp}::boolean OR staff.role_code <> 'OWNER' OR credential.totp_key_id IS NOT NULL)
     RETURNING
       current_session.id AS "sessionId",
       staff.id AS "userId",

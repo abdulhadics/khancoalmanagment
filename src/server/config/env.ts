@@ -46,6 +46,10 @@ const environment = z
     DEPLOYMENT_ENV: z
       .enum(["development", "production"])
       .default("development"),
+    REQUIRE_OWNER_TOTP: z
+      .enum(["true", "false"])
+      .default("false")
+      .transform((value) => value === "true"),
     APP_ORIGIN: appOrigin.optional(),
     APP_PORT: z
       .string()
@@ -79,6 +83,13 @@ const environment = z
   })
   .superRefine((value, context) => {
     if (value.DEPLOYMENT_ENV === "development") {
+      if (value.REQUIRE_OWNER_TOTP && !value.AUTH_ENCRYPTION_KEY) {
+        context.addIssue({
+          code: "custom",
+          path: ["AUTH_ENCRYPTION_KEY"],
+          message: "Set this value to require Owner two-factor authentication.",
+        });
+      }
       return;
     }
     if (!value.APP_ORIGIN?.startsWith("https://")) {

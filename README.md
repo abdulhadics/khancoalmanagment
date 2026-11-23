@@ -30,7 +30,7 @@ For the first Owner, provide `OWNER_EMAIL`, `OWNER_USERNAME`, `OWNER_DISPLAY_NAM
 
 Production uses a separate `MIGRATION_DATABASE_URL` for schema changes and a restricted `DATABASE_URL` for application access. After migrating, connect `psql` to the application database as the schema owner and apply the grants with `-v ON_ERROR_STOP=1 -v application_role=khancoal_app -f scripts/grant-database-access.sql`. Replace `khancoal_app` with the name of the existing application login. Keep database credentials outside Git.
 
-Production sign-in requires an HTTPS `APP_ORIGIN`, a 32-byte base64url `AUTH_ENCRYPTION_KEY`, and `SMTP_URL` and `SMTP_FROM` for recovery email. The first Owner changes the temporary password and enrolls an authenticator before accessing the production workspace. Keep the key available across app restarts. On Windows Server, terminate TLS at the local reverse proxy, preserve the public Host, and set `X-KC-Client-IP` to the actual client address at the proxy so audit and throttle records can use it.
+Production sign-in requires an HTTPS `APP_ORIGIN`, a 32-byte base64url `AUTH_ENCRYPTION_KEY`, and `SMTP_URL` and `SMTP_FROM` for recovery email. The first Owner changes the temporary password on first sign-in. Owners can change their username and enable an authenticator in Profile. Set `REQUIRE_OWNER_TOTP=true` to require authenticator enrollment for Owners. Keep the encryption key available across app restarts. On Windows Server, terminate TLS at the local reverse proxy, preserve the public Host, and set `X-KC-Client-IP` to the actual client address at the proxy so audit and throttle records can use it.
 
 ## Handover on the client's Windows machine
 

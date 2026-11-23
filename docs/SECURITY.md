@@ -8,7 +8,7 @@ The application validates HTTPS, PostgreSQL, an authenticator encryption key, an
 
 ## Account lifecycle
 
-Bootstrap creates the first Owner from process environment input and stores an Argon2id password hash. The first session requires a password change. An Owner must also enroll a TOTP authenticator in production. Optional staff TOTP enrollment verifies the existing password and an authenticator code. Accepted TOTP time steps are recorded so a previously used code is rejected.
+Bootstrap creates the first Owner from process environment input and stores an Argon2id password hash. First sign-in requires a password change. Set `REQUIRE_OWNER_TOTP=true` to require authenticator enrollment for Owners. Staff can enroll from Profile with their current password and an authenticator code. Sign-in continues to require the authenticator for enrolled accounts. Accepted TOTP time steps are recorded so a previously used code is rejected.
 
 Authentication generates separate random login challenge, session, and reset tokens. PostgreSQL stores their digests. Sessions have 30-minute idle and 12-hour absolute limits. Cookies use HttpOnly and SameSite=Lax. Production uses Secure cookies with protected names. Staff status and role changes, password resets, and signed-in password changes revoke affected sessions. Reset links expire after 20 minutes and can be redeemed once. The login and reset flows use PostgreSQL-backed throttling and generic responses. The maintenance command removes expired authentication records and leaves active records, user credentials and financial data in place. [Windows maintenance runbook](RUNBOOK.md)
 

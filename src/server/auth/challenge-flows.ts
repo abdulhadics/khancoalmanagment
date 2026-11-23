@@ -1,11 +1,12 @@
 import { randomUUID } from "node:crypto";
 
 import { verify } from "@node-rs/argon2";
+import { z } from "zod";
 
-import type {
-  AuthChallengePurpose,
+import {
+  type AuthChallengePurpose,
   Prisma,
-  PrismaClient,
+  type PrismaClient,
 } from "../../generated/prisma/client";
 import { appendAuditEvent } from "../repositories/audit-log";
 import { completePasswordStage } from "./login";
@@ -437,6 +438,54 @@ export async function changeOwnPassword(
       token: await issueSession(tx, userId, now),
     };
   });
+}
+
+const usernameSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .regex(/^[a-z0-9][a-z0-9._-]{2,63}$/);
+
+export async function changeOwnUsername(
+  database: PrismaClient,
+  input: OwnCredentialCommand & { username: string },
+) {
+  const username = usernameSchema.safeParse(input.username);
+  if (!username.success) return "invalid_username";
+  const now = input.now ?? new Date();
+  if (
+    input.actor.roleCode !== "OWNER" ||
+    !(await allowOwnCredentialAttempt(database, input, now))
+  ) {
+    return "denied";
+  }
+
+  try {
+    return await database.$transaction(async (tx) => {
+      const { userId } = input.actor;
+      const credential = await readOwnCredential(tx, input.actor, now);
+      const action = "auth.username.change";
+      if (!credential) return "denied";
+      if (!(await verify(credential.passwordHash, input.currentPassword))) {
+        await auditChallenge(tx, input, userId, action, false);
+        return "denied";
+      }
+      await tx.user.update({
+        where: { id: userId },
+        data: { username: username.data },
+      });
+      await auditChallenge(tx, input, userId, action, true);
+      return "updated";
+    });
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      return "unavailable";
+    }
+    throw error;
+  }
 }
 
 export async function beginOwnTotpEnrollment(

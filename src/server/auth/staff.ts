@@ -77,7 +77,7 @@ async function verifyOwner(
   actor: StaffActor,
 ) {
   const now = new Date();
-  const production = readEnvironment().DEPLOYMENT_ENV === "production";
+  const enforceOwnerTotp = readEnvironment().REQUIRE_OWNER_TOTP;
   const session = await database.session.findFirst({
     where: {
       id: actor.sessionId,
@@ -92,7 +92,7 @@ async function verifyOwner(
         credential: {
           is: {
             mustChangePassword: false,
-            ...(production ? { totpKeyId: { not: null } } : {}),
+            ...(enforceOwnerTotp ? { totpKeyId: { not: null } } : {}),
           },
         },
       },

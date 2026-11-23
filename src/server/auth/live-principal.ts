@@ -37,8 +37,7 @@ export async function requireLivePermission(
     SELECT id FROM sessions WHERE id = ${actor.sessionId}::uuid FOR UPDATE
   `;
   const requireTotp =
-    actor.roleCode === "OWNER" &&
-    readEnvironment().DEPLOYMENT_ENV === "production";
+    actor.roleCode === "OWNER" && readEnvironment().REQUIRE_OWNER_TOTP;
 
   const session = await tx.session.findFirst({
     where: {

@@ -1,4 +1,9 @@
-import { beginTotp, signOutAll, updateOwnPassword } from "@/app/(auth)/actions";
+import {
+  beginTotp,
+  signOutAll,
+  updateOwnPassword,
+  updateOwnUsername,
+} from "@/app/(auth)/actions";
 import { ActionForm } from "@/components/auth/action-form";
 import { NewPasswordFields } from "@/components/auth/fields";
 import { Button } from "@/components/ui/button";
@@ -34,6 +39,25 @@ export default async function ProfilePage() {
         </p>
       </div>
       <div className="profile-sections">
+        {actor.roleCode === "OWNER" && (
+          <section className="module-empty" aria-labelledby="change-username">
+            <h2 id="change-username">{auth.updateUsername}</h2>
+            <ActionForm action={updateOwnUsername} submit={auth.saveUsername}>
+              <label>
+                {auth.username}
+                <input
+                  name="username"
+                  defaultValue={actor.username}
+                  autoComplete="username"
+                  minLength={3}
+                  maxLength={64}
+                  required
+                />
+              </label>
+              <CurrentPassword />
+            </ActionForm>
+          </section>
+        )}
         <section className="module-empty" aria-labelledby="change-password">
           <h2 id="change-password">{auth.updatePassword}</h2>
           <ActionForm action={updateOwnPassword} submit={auth.savePassword}>

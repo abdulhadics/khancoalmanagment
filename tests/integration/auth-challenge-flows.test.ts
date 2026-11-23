@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import {
   beginOwnTotpEnrollment,
   changeOwnPassword,
+  changeOwnUsername,
   completeForcedPasswordChange,
   completeTotpChallenge,
   completeTotpEnrollment,
@@ -39,6 +40,7 @@ async function createAccount(
   database: ReturnType<typeof testDatabase>,
   password: string,
   mustChangePassword: boolean,
+  roleCode: "ACCOUNTANT" | "OWNER" = "ACCOUNTANT",
 ) {
   const username = `flow-${randomUUID()}`;
   return database.user.create({
@@ -46,7 +48,7 @@ async function createAccount(
       username,
       email: `${username}@example.test`,
       displayName: "Auth Flow Test",
-      roleCode: "ACCOUNTANT",
+      roleCode,
       credential: {
         create: {
           passwordHash: await hashPassword(password),
@@ -68,6 +70,61 @@ function authenticatorCode(secret: Buffer, now: Date) {
 }
 
 describe("authentication challenge completion", () => {
+  it("lets an unenrolled Owner sign in and change their username with their current password", async () => {
+    const database = testDatabase();
+    const password = newPassword();
+    let ownerId: string | undefined;
+    try {
+      const user = await createAccount(database, password, false, "OWNER");
+      ownerId = user.id;
+      const signIn = (identifier: string) =>
+        loginWithPassword(
+          { identifier, password, requestId: randomUUID() },
+          database,
+        );
+      const original = await signIn(user.username);
+      if (original.status !== "success")
+        throw new Error("Missing Owner session.");
+      const actor = await getSession(original.token, database);
+      if (!actor) throw new Error("Missing Owner actor.");
+      const username = `admin-${randomUUID()}`;
+      await expect(
+        changeOwnUsername(database, {
+          actor,
+          username,
+          currentPassword: newPassword(),
+        }),
+      ).resolves.toBe("denied");
+      await expect(
+        changeOwnUsername(database, {
+          actor,
+          username,
+          currentPassword: password,
+        }),
+      ).resolves.toBe("updated");
+      await expect(signIn(username)).resolves.toMatchObject({
+        status: "success",
+      });
+      await expect(signIn(user.email)).resolves.toMatchObject({
+        status: "success",
+      });
+      await expect(signIn(user.username)).resolves.toMatchObject({
+        status: "invalid",
+      });
+    } finally {
+      try {
+        if (ownerId) {
+          await database.user.update({
+            where: { id: ownerId },
+            data: { roleCode: "ACCOUNTANT" },
+          });
+        }
+      } finally {
+        await database.$disconnect();
+      }
+    }
+  });
+
   it("prunes expired authentication records and preserves current credentials", async () => {
     const database = testDatabase();
     const started = new Date("1970-01-01T00:00:00Z");

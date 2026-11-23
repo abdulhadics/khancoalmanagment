@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
 import type { AuthActionState } from "@/components/auth/action-form";
@@ -7,6 +8,7 @@ import { auth } from "@/i18n/messages/auth-en";
 import {
   beginOwnTotpEnrollment,
   changeOwnPassword,
+  changeOwnUsername,
   completeForcedPasswordChange,
   completeTotpChallenge,
   completeTotpEnrollment,
@@ -108,7 +110,7 @@ export async function forcePasswordChange(
   const result = await completeForcedPasswordChange(getDatabase(), {
     ...values,
     challengeToken,
-    enforceOwnerTotp: readEnvironment().DEPLOYMENT_ENV === "production",
+    enforceOwnerTotp: readEnvironment().REQUIRE_OWNER_TOTP,
     ...(await getRequestContext()),
   });
   if (!result) return error(auth.expired);
@@ -241,6 +243,24 @@ export async function updateOwnPassword(
   if (!result) return error(auth.invalid);
   await setAuthCookie("session", result.token);
   return { kind: "success", message: auth.changeSuccess };
+}
+
+export async function updateOwnUsername(
+  _state: AuthActionState,
+  data: FormData,
+): Promise<AuthActionState> {
+  await assertActionOrigin();
+  const result = await changeOwnUsername(getDatabase(), {
+    actor: await requireActor(),
+    username: input(data, "username"),
+    currentPassword: input(data, "currentPassword"),
+    ...(await getRequestContext()),
+  });
+  if (result === "invalid_username") return error(auth.usernameHelp);
+  if (result === "unavailable") return error(auth.usernameUnavailable);
+  if (result !== "updated") return error(auth.usernameDenied);
+  revalidatePath("/profile");
+  return { kind: "success", message: auth.usernameUpdated };
 }
 
 export async function beginTotp(

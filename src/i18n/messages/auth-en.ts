@@ -14,6 +14,15 @@ export const auth = {
   change: "Set a new password",
   updatePassword: "Change password",
   currentPassword: "Current password",
+  username: "Username",
+  updateUsername: "Change username",
+  saveUsername: "Save username",
+  usernameHelp:
+    "Use 3 to 64 letters, numbers, dots, underscores, or hyphens, starting with a letter or number.",
+  usernameUnavailable: "That username is already in use.",
+  usernameDenied:
+    "Could not change your username. Check your password or try again later.",
+  usernameUpdated: "Username updated.",
   changeSuccess: "Password updated. Other devices have been signed out.",
   changeHelp: "Set a new password to finish signing in to your staff account.",
   newPassword: "New password",

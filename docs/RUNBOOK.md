@@ -19,6 +19,7 @@
 
    ```dotenv
    DEPLOYMENT_ENV=production
+   REQUIRE_OWNER_TOTP=true
    APP_ORIGIN=https://coal.example.com
    APP_PORT=3000
    DATABASE_URL=postgresql://khancoal_app:PERCENT_ENCODED_PASSWORD@127.0.0.1:5432/khancoal

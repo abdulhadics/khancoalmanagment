@@ -8,9 +8,19 @@ describe("deployment configuration", () => {
   it("uses local defaults with the database optional", () => {
     expect(readEnvironment({})).toEqual({
       DEPLOYMENT_ENV: "development",
+      REQUIRE_OWNER_TOTP: false,
       APP_ORIGIN: "http://127.0.0.1:3000",
       APP_PORT: 3000,
     });
+  });
+
+  it("allows deployments to require Owner two-factor enrollment", () => {
+    expect(
+      readEnvironment({
+        REQUIRE_OWNER_TOTP: "true",
+        AUTH_ENCRYPTION_KEY: Buffer.alloc(32).toString("base64url"),
+      }).REQUIRE_OWNER_TOTP,
+    ).toBe(true);
   });
 
   it("normalizes an origin and parses the configured port", () => {
