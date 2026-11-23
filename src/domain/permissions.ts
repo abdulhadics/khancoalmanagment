@@ -33,6 +33,13 @@ const policy = {
   "admin.integrity": owners,
   "admin.periods": owners,
   "admin.backups": owners,
+  "expenses.view": reportReaders,
+  "expenses.manage": accountants,
+  "expenses.void": owners,
+  "deliveries.view": dispatchers,
+  "deliveries.manage": dispatchers,
+  "notifications.view": allRoles,
+  "notifications.manage": accountants,
 } as const satisfies Record<string, readonly RoleCode[]>;
 
 export type Permission = keyof typeof policy;

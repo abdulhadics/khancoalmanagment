@@ -128,7 +128,9 @@ function FinancialPanels({
     { label: t.cashOut, value: money(cash.paid), hint: t.cashOutDetail },
     { label: t.inHand, value: money(cash.balanceInHand), hint: t.inHandDetail },
     { label: t.purchases, value: money(totals.purchases) },
-    { label: t.profit, value: money(totals.profit) },
+    { label: t.profit, value: money(totals.profit), hint: "Gross profit" },
+    { label: "Expenses", value: money(data.expenses), hint: "Operational costs" },
+    { label: "Net Profit", value: money(data.netProfit), hint: "Sales profit minus expenses" },
   ];
   return (
     <>

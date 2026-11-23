@@ -7,6 +7,8 @@ import {
   Truck,
   UsersRound,
   Wallet,
+  ReceiptText,
+  PackageCheck,
   type LucideIcon,
 } from "lucide-react";
 import { messages } from "@/i18n";
@@ -36,6 +38,8 @@ export const primaryMenu: MenuItem[] = [
     ],
   },
   { href: "/account", label: nav.account, icon: Wallet },
+  { href: "/expenses", label: nav.expenses, icon: ReceiptText },
+  { href: "/deliveries", label: nav.deliveries, icon: PackageCheck },
   {
     label: nav.reports,
     icon: ChartNoAxesCombined,
@@ -71,6 +75,10 @@ export function permissionForDestination(href: string): Permission {
       return "orders.create";
     case "/account":
       return "account.view";
+    case "/expenses":
+      return "expenses.view";
+    case "/deliveries":
+      return "deliveries.view";
     case "/customers":
     case "/suppliers":
       return "parties.view";

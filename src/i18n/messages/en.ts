@@ -27,6 +27,9 @@ export const en = {
     singleSupplierReport: "Single Supplier Report",
     customers: "Customers",
     suppliers: "Suppliers",
+    expenses: "Expenses",
+    deliveries: "Deliveries",
+    notifications: "Notifications",
     settings: "Settings",
   },
   setup: {

@@ -17,13 +17,24 @@ import { requireActor } from "@/server/auth/request-context";
 import { getDatabase } from "@/server/db/client";
 import { readWorkspaceDate } from "@/server/settings/company";
 
+import { NotificationBell } from "@/components/workspace/notification-bell";
+import {
+  readNotificationsList,
+  readUnreadNotificationCount,
+} from "@/server/notifications/queries";
+
 export default async function WorkspaceLayout({
   children,
 }: {
   children: ReactNode;
 }) {
   const actor = await requireActor();
-  const today = await readWorkspaceDate(getDatabase());
+  const db = getDatabase();
+  const [today, notifications, unreadCount] = await Promise.all([
+    readWorkspaceDate(db),
+    readNotificationsList(db, actor).catch(() => []),
+    readUnreadNotificationCount(db, actor).catch(() => 0),
+  ]);
   const allowedRoutes = destinations
     .filter(({ href }) => can(actor.roleCode, permissionForDestination(href)))
     .map(({ href }) => href);
@@ -51,6 +62,10 @@ export default async function WorkspaceLayout({
               </Link>
             </Button>
           )}
+          <NotificationBell
+            initialNotifications={notifications}
+            initialUnreadCount={unreadCount}
+          />
           <details className="account-menu">
             <summary aria-label={auth.profileMenu(actor.displayName)}>
               <CircleUserRound aria-hidden="true" size={21} />

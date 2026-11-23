@@ -1,9 +1,11 @@
+import { Decimal } from "decimal.js";
 import { parseBusinessDate, todayBusinessDate } from "@/domain/business-date";
 import {
   can,
   requirePermission,
   type PermissionActor,
 } from "@/domain/permissions";
+import { readTotalExpenses } from "../expenses/queries";
 import {
   Prisma,
   type OrderStatus,
@@ -164,6 +166,7 @@ async function readFinancialDashboard(
     recentOrders,
     transactions,
     preferences,
+    totalExpenses,
   ] = await Promise.all([
     readSalesTimeline(tx, windows, { from: `${months[0]}-01`, to: bounds.to }),
     getCashMovementTotals(tx, { from: bounds.from, through: bounds.to }),
@@ -174,18 +177,23 @@ async function readFinancialDashboard(
       ? readRecentTransactions(tx, bounds)
       : null,
     readDocumentDisplayPreferences(tx),
+    readTotalExpenses(tx, bounds),
   ]);
   function totalsFor(key: (typeof windows)[number][0]) {
     const totals = timeline.totals.get(key);
     if (!totals) throw new Error("Dashboard sales window is missing.");
     return totals;
   }
+  const selectedTotals = totalsFor("selected");
+  const netProfit = new Decimal(selectedTotals.profit)
+    .minus(totalExpenses)
+    .toFixed(2);
   return {
     scope: "financial" as const,
     today,
     period,
     bounds,
-    totals: totalsFor("selected"),
+    totals: selectedTotals,
     summary: {
       today: totalsFor("today"),
       month: totalsFor("month"),
@@ -202,6 +210,8 @@ async function readFinancialDashboard(
       total: companyCounts.reduce((total, row) => total + row._count, 0),
     },
     balances,
+    expenses: totalExpenses,
+    netProfit,
     recentOrders,
     transactions,
     preferences,

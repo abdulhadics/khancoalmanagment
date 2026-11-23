@@ -138,6 +138,28 @@ enum BackupState {
   @@map("backup_state")
 }
 
+enum NotificationType {
+  CUSTOMER_OVERDUE
+  SUPPLIER_OVERDUE
+  DELIVERY_PENDING
+  GENERAL
+
+  @@map("notification_type")
+}
+
+enum ExpenseCategory {
+  RENT
+  TRANSPORTATION
+  LABOR
+  SALARY
+  UTILITIES
+  FOOD_REFRESHMENTS
+  MAINTENANCE
+  OTHER
+
+  @@map("expense_category")
+}
+
 model Role {
   code  RoleCode @id
   users User[]
@@ -176,6 +198,10 @@ model User {
   ledgerEntries    LedgerEntry[]
   periodLocks      PeriodLock[]
   backups          Backup[]
+  expensesCreated  Expense[]        @relation("ExpenseCreated")
+  expensesVoided   Expense[]        @relation("ExpenseVoided")
+  deliveriesCreated DeliveryRecord[] @relation("DeliveryCreated")
+  pickupsCreated   DeliveryPickup[] @relation("PickupCreated")
 
   @@index([roleCode, isActive])
   @@map("users")
@@ -308,6 +334,8 @@ model Customer {
   revisions     OrderRevision[]
   payments      Payment[]
   ledgerEntries LedgerEntry[]
+  notifications Notification[]
+  deliveries    DeliveryRecord[]
 
   @@index([isActive, nameKey, id])
   @@index([nameKey, id])
@@ -338,6 +366,7 @@ model Supplier {
   revisions     OrderRevision[]
   payments      Payment[]
   ledgerEntries LedgerEntry[]
+  notifications Notification[]
 
   @@index([isActive, nameKey, id])
   @@index([nameKey, id])
@@ -599,3 +628,80 @@ model Backup {
   @@index([state, completedAt, id])
   @@map("backups")
 }
+
+model Notification {
+  id          BigInt           @id @default(autoincrement())
+  type        NotificationType
+  title       String           @db.VarChar(250)
+  message     String           @db.VarChar(1500)
+  customerId  String?          @map("customer_id") @db.Uuid
+  supplierId  String?          @map("supplier_id") @db.Uuid
+  isRead      Boolean          @default(false) @map("is_read")
+  isDismissed Boolean          @default(false) @map("is_dismissed")
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  customer    Customer?        @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  supplier    Supplier?        @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+
+  @@index([isRead, isDismissed, createdAt])
+  @@index([customerId])
+  @@index([supplierId])
+  @@map("notifications")
+}
+
+model Expense {
+  id           String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  businessDate DateTime        @map("business_date") @db.Date
+  category     ExpenseCategory
+  description  String          @db.VarChar(500)
+  amount       Decimal         @db.Decimal(14, 2)
+  notes        String?         @db.VarChar(1500)
+  createdById  String          @map("created_by_id") @db.Uuid
+  voidedById   String?         @map("voided_by_id") @db.Uuid
+  voidedAt     DateTime?       @map("voided_at") @db.Timestamptz(3)
+  voidReason   String?         @map("void_reason") @db.VarChar(500)
+  createdAt    DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  createdBy    User            @relation("ExpenseCreated", fields: [createdById], references: [id], onDelete: Restrict)
+  voidedBy     User?           @relation("ExpenseVoided", fields: [voidedById], references: [id], onDelete: Restrict)
+
+  @@index([businessDate, id])
+  @@index([category, businessDate])
+  @@map("expenses")
+}
+
+model DeliveryRecord {
+  id              String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  customerId      String           @map("customer_id") @db.Uuid
+  businessDate    DateTime         @map("business_date") @db.Date
+  orderedWeight   Decimal          @map("ordered_weight") @db.Decimal(12, 3)
+  deliveredWeight Decimal          @default(0) @map("delivered_weight") @db.Decimal(12, 3)
+  notes           String?          @db.VarChar(1500)
+  isComplete      Boolean          @default(false) @map("is_complete")
+  createdById     String           @map("created_by_id") @db.Uuid
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  customer        Customer         @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  createdBy       User             @relation("DeliveryCreated", fields: [createdById], references: [id], onDelete: Restrict)
+  pickups         DeliveryPickup[]
+
+  @@index([customerId, isComplete])
+  @@index([businessDate])
+  @@map("delivery_records")
+}
+
+model DeliveryPickup {
+  id               String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  deliveryRecordId String         @map("delivery_record_id") @db.Uuid
+  businessDate     DateTime       @map("business_date") @db.Date
+  weight           Decimal        @db.Decimal(12, 3)
+  vehicleNo        String?        @map("vehicle_no") @db.VarChar(40)
+  notes            String?        @db.VarChar(1500)
+  createdById      String         @map("created_by_id") @db.Uuid
+  createdAt        DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  deliveryRecord   DeliveryRecord @relation(fields: [deliveryRecordId], references: [id], onDelete: Restrict)
+  createdBy        User           @relation("PickupCreated", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([deliveryRecordId])
+  @@map("delivery_pickups")
+}
+

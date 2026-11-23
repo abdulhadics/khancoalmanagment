@@ -85,3 +85,11 @@ The usability checks cover opening and closing the large Sales party chooser by 
 ## 23 November Vercel verification
 
 The public service returned HTTP 200 on `/healthz` and HTTP 503 on `/readyz`. Sign-in rendered the retry panel. The Vercel response confirmed that the function moved from Washington to Singapore to match Neon. An isolated Vercel-mode smoke test with the other settings populated confirmed that a missing SMTP URL and sender leave the app unready and report only the safe field names in private logs. Verify hosted database access, Owner sign-in, and actual mail delivery after those settings are saved and the deployment is rebuilt.
+
+## 23 November full regression on 6314cce
+
+The production build, lint, and type checks passed. All 77 unit tests, 85 PostgreSQL integration tests, and 21 browser workflows passed. The browser runs used Edge, Playwright Firefox, and Playwright WebKit at desktop and mobile widths. Signed-out checks redirected normal workspace, export and print requests to sign-in. The backup download rejected both an unauthenticated same-origin POST and a cross-origin POST.
+
+The encrypted restore drill reconciled PKR 168.74 and verified preservation of the primary archive after a simulated mirror upload failure. The dependency audit reported zero known vulnerabilities, and the redacted Git history scan reported zero leaks.
+
+With 100,000 synthetic orders, 10,000 payments, and 210,033 journal entries, all 440 typical page requests and 55 dispatch posting batches succeeded. The dashboard reached 1.529 seconds p95 with ten sessions. Account reached 2.112 seconds p95 with ten sessions, above the two-second target. The accounting integrity scan returned zero findings. The prior 500,000-order timeout findings still require a fix and a capacity rerun.

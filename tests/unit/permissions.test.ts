@@ -21,6 +21,13 @@ describe("role permissions", () => {
     expect(can("VIEWER", "reports.export")).toBe(false);
     expect(can("VIEWER", "orders.create")).toBe(false);
     expect(can("VIEWER", "account.view")).toBe(false);
+    expect(can("ACCOUNTANT", "expenses.manage")).toBe(true);
+    expect(can("OPERATOR", "expenses.manage")).toBe(false);
+    expect(can("OWNER", "expenses.void")).toBe(true);
+    expect(can("ACCOUNTANT", "expenses.void")).toBe(false);
+    expect(can("OPERATOR", "deliveries.manage")).toBe(true);
+    expect(can("VIEWER", "deliveries.manage")).toBe(false);
+    expect(can("VIEWER", "notifications.view")).toBe(true);
     expect(can("OWNER", "toString")).toBe(false);
     expect(can("unrecognized", "dashboard.view")).toBe(false);
     expect(() =>
