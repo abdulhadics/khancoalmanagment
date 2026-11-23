@@ -18,6 +18,7 @@ import { getDatabase } from "@/server/db/client";
 import { readWorkspaceDate } from "@/server/settings/company";
 
 import { NotificationBell } from "@/components/workspace/notification-bell";
+import { ThemeToggle } from "@/components/workspace/theme-toggle";
 import {
   readNotificationsList,
   readUnreadNotificationCount,
@@ -66,6 +67,7 @@ export default async function WorkspaceLayout({
             initialNotifications={notifications}
             initialUnreadCount={unreadCount}
           />
+          <ThemeToggle />
           <details className="account-menu">
             <summary aria-label={auth.profileMenu(actor.displayName)}>
               <CircleUserRound aria-hidden="true" size={21} />

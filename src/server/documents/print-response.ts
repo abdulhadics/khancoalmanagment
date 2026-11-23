@@ -25,7 +25,7 @@ function documentResponse(
 }
 
 export function pdfResponse(body: Uint8Array<ArrayBuffer>, filename: string) {
-  return documentResponse(body, filename, "pdf", "application/pdf", "inline");
+  return documentResponse(body, filename, "pdf", "application/pdf", "attachment");
 }
 
 export function csvResponse(body: Uint8Array<ArrayBuffer>, filename: string) {
