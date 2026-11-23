@@ -42,20 +42,18 @@ function SidebarNav({
   return (
     <>
       <Link href="/" className="workspace-brand" onNavigate={handleNavigation}>
-        <span className="brand-mark brand-mark-logo">
+        <div className="brand-logo-container">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/logo.png"
             alt={common.product}
-            width={34}
-            height={34}
-            className="brand-logo-img"
+            className="brand-logo-banner"
           />
-        </span>
-        <span>
+        </div>
+        <div className="brand-text">
           <strong>{common.product}</strong>
           <small>{common.tagline}</small>
-        </span>
+        </div>
       </Link>
 
       <nav className="sidebar-nav" aria-label={common.navigation}>

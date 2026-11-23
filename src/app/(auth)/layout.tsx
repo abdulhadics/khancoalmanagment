@@ -10,17 +10,15 @@ export default function AuthenticationLayout({
   return (
     <main className="auth-layout">
       <div className="auth-identity">
-        <span className="brand-mark brand-mark-logo">
+        <div className="brand-logo-container">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/logo.png"
             alt={common.product}
-            width={34}
-            height={34}
-            className="brand-logo-img"
+            className="brand-logo-banner"
           />
-        </span>
-        <div>
+        </div>
+        <div className="brand-text">
           <strong>{common.product}</strong>
           <p>{common.tagline}</p>
         </div>

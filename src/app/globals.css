@@ -86,33 +86,41 @@ button:not(:disabled) {
 .workspace-brand {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 1.5rem 1rem;
-  margin: 0 0.25rem;
-  text-decoration: none;
-}
-
-.brand-mark {
-  display: grid;
-  flex: 0 0 2.5rem;
-  block-size: 2.5rem;
-  place-items: center;
+  gap: 0.875rem;
+  padding: 1.25rem 1rem;
+  margin: 0.25rem;
   border-radius: 0.75rem;
-  color: #fff;
-  background: #6344bf;
+  text-decoration: none;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: background 0.15s ease;
 }
 
-.brand-mark-logo {
+.workspace-brand:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.brand-logo-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 3.25rem;
+  height: 3.25rem;
   background: #ffffff;
-  padding: 2px;
-  overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  border-radius: 0.625rem;
+  padding: 0.25rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
 }
 
-.brand-logo-img {
+.brand-logo-banner {
   width: 100%;
   height: 100%;
   object-fit: contain;
+  display: block;
+}
+
+.brand-text {
+  min-width: 0;
 }
 
 .workspace-brand strong,
@@ -122,15 +130,18 @@ button:not(:disabled) {
 
 .workspace-brand strong {
   color: #faf7ff;
-  font-size: 0.91rem;
-  font-weight: 680;
-  letter-spacing: -0.022em;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .workspace-brand small {
   color: #d3c9e6;
   font-size: 0.75rem;
-  margin-block-start: 0.125rem;
+  margin-block-start: 0.15rem;
 }
 
 .sidebar-nav {

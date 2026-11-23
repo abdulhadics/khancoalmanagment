@@ -14,10 +14,12 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
   icons: {
     icon: [
-      { url: "/logo.png", type: "image/png" },
-      { url: "/favicon.ico", sizes: "any" },
+      { url: "/favicon.ico", sizes: "32x32" },
+      { url: "/favicon-48.png", sizes: "48x48", type: "image/png" },
+      { url: "/icon.png", sizes: "32x32", type: "image/png" },
     ],
-    apple: "/logo.png",
+    shortcut: "/favicon.ico",
+    apple: "/icon-192.png",
   },
 };
 
