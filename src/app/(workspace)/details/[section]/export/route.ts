@@ -26,11 +26,19 @@ export async function GET(
   if (!isDetailsSection(section))
     return printTextResponse(documentPrint.unavailable, 404);
   const actor = await requireActor();
-  return exportDetails(
-    getDatabase(),
-    actor,
-    detailsSections[section],
-    new URL(request.url).searchParams,
-    await getRequestContext(),
-  );
+  try {
+    return await exportDetails(
+      getDatabase(),
+      actor,
+      detailsSections[section],
+      new URL(request.url).searchParams,
+      await getRequestContext(),
+    );
+  } catch (error) {
+    console.error("Export details failed:", error);
+    return printTextResponse(
+      documentPrint.unavailable,
+      500,
+    );
+  }
 }

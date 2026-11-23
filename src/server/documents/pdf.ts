@@ -29,19 +29,32 @@ const bottomMargin = 96;
 const requirePackage = createRequire(join(process.cwd(), "package.json"));
 let interBytes: { regular: Buffer; semibold: Buffer } | undefined;
 
+function resolveFont(relativePath: string): string {
+  try {
+    return requirePackage.resolve(relativePath);
+  } catch {
+    // Fallback when running inside Vercel serverless / traced bundles
+    const rootPath = join(process.cwd(), "node_modules", relativePath);
+    return rootPath;
+  }
+}
+
 function fontFiles() {
-  interBytes ??= {
-    regular: readFileSync(
-      requirePackage.resolve(
-        "@expo-google-fonts/inter/400Regular/Inter_400Regular.ttf",
-      ),
-    ),
-    semibold: readFileSync(
-      requirePackage.resolve(
-        "@expo-google-fonts/inter/600SemiBold/Inter_600SemiBold.ttf",
-      ),
-    ),
-  };
+  if (!interBytes) {
+    try {
+      interBytes = {
+        regular: readFileSync(
+          resolveFont("@expo-google-fonts/inter/400Regular/Inter_400Regular.ttf"),
+        ),
+        semibold: readFileSync(
+          resolveFont("@expo-google-fonts/inter/600SemiBold/Inter_600SemiBold.ttf"),
+        ),
+      };
+    } catch {
+      // If font files cannot be loaded, interBytes stays undefined and PDFKit uses standard fonts
+      interBytes = undefined;
+    }
+  }
   return interBytes;
 }
 
@@ -86,11 +99,15 @@ function addLetterhead(doc: PdfDocument, profile: DocumentProfile) {
       ? profile.logoBytes
       : null;
   if (logo) {
-    doc.image(Buffer.from(logo), documentInset, topMargin, {
-      fit: [48, 48],
-      align: "center",
-      valign: "center",
-    });
+    try {
+      doc.image(Buffer.from(logo), documentInset, topMargin, {
+        fit: [48, 48],
+        align: "center",
+        valign: "center",
+      });
+    } catch {
+      // Ignore image rendering errors to allow PDF generation to proceed
+    }
   }
 
   const textOffset = logo ? 62 : 0;
@@ -202,9 +219,15 @@ export function renderPdf(
     doc.once("end", () => resolve(Uint8Array.from(Buffer.concat(chunks))));
     try {
       const fonts = fontFiles();
-      doc.registerFont("Inter", fonts.regular);
-      doc.registerFont("Inter Semibold", fonts.semibold);
-      doc.font("Inter");
+      if (fonts) {
+        doc.registerFont("Inter", fonts.regular);
+        doc.registerFont("Inter Semibold", fonts.semibold);
+        doc.font("Inter");
+      } else {
+        doc.registerFont("Inter", "Helvetica");
+        doc.registerFont("Inter Semibold", "Helvetica-Bold");
+        doc.font("Helvetica");
+      }
       doc.on("pageAdded", () => addLetterhead(doc, options.profile));
       doc.addPage();
       draw(doc);
