@@ -53,67 +53,81 @@ export async function readExpensesList(
 
   const page = Math.max(1, filters.page ?? 1);
 
-  const [totalCount, activeAggregation, rawExpenses] = await Promise.all([
-    database.expense.count({ where: whereConditions }),
-    database.expense.aggregate({
-      where: { ...whereConditions, voidedAt: null },
-      _sum: { amount: true },
-    }),
-    database.expense.findMany({
-      where: whereConditions,
-      orderBy: [{ businessDate: "desc" }, { createdAt: "desc" }],
-      skip: (page - 1) * expensesPageSize,
-      take: expensesPageSize,
-      include: {
-        createdBy: { select: { displayName: true } },
-      },
-    }),
-  ]);
+  try {
+    const [totalCount, activeAggregation, rawExpenses] = await Promise.all([
+      database.expense.count({ where: whereConditions }),
+      database.expense.aggregate({
+        where: { ...whereConditions, voidedAt: null },
+        _sum: { amount: true },
+      }),
+      database.expense.findMany({
+        where: whereConditions,
+        orderBy: [{ businessDate: "desc" }, { createdAt: "desc" }],
+        skip: (page - 1) * expensesPageSize,
+        take: expensesPageSize,
+        include: {
+          createdBy: { select: { displayName: true } },
+        },
+      }),
+    ]);
 
-  const lastPage = Math.max(1, Math.ceil(totalCount / expensesPageSize));
+    const lastPage = Math.max(1, Math.ceil(totalCount / expensesPageSize));
 
-  const rows: ExpenseRow[] = rawExpenses.map((exp) => ({
-    id: exp.id,
-    businessDate: exp.businessDate.toISOString().slice(0, 10),
-    category: exp.category,
-    description: exp.description,
-    amount: exp.amount.toFixed(2),
-    notes: exp.notes,
-    voidedAt: exp.voidedAt ? exp.voidedAt.toISOString() : null,
-    voidReason: exp.voidReason,
-    createdByName: exp.createdBy.displayName,
-  }));
+    const rows: ExpenseRow[] = rawExpenses.map((exp) => ({
+      id: exp.id,
+      businessDate: exp.businessDate.toISOString().slice(0, 10),
+      category: exp.category,
+      description: exp.description,
+      amount: exp.amount.toFixed(2),
+      notes: exp.notes,
+      voidedAt: exp.voidedAt ? exp.voidedAt.toISOString() : null,
+      voidReason: exp.voidReason,
+      createdByName: exp.createdBy.displayName,
+    }));
 
-  return {
-    rows,
-    totalCount,
-    totalActiveAmount: activeAggregation._sum.amount?.toFixed(2) ?? "0.00",
-    page,
-    lastPage,
-  };
+    return {
+      rows,
+      totalCount,
+      totalActiveAmount: activeAggregation._sum.amount?.toFixed(2) ?? "0.00",
+      page,
+      lastPage,
+    };
+  } catch {
+    return {
+      rows: [],
+      totalCount: 0,
+      totalActiveAmount: "0.00",
+      page: 1,
+      lastPage: 1,
+    };
+  }
 }
 
 export async function readTotalExpenses(
   db: PrismaClient | Prisma.TransactionClient,
   bounds: { from?: string; to: string },
 ) {
-  const businessDate: Prisma.DateTimeFilter = {
-    lte: parseBusinessDate(bounds.to),
-  };
+  try {
+    const businessDate: Prisma.DateTimeFilter = {
+      lte: parseBusinessDate(bounds.to),
+    };
 
-  if (bounds.from) {
-    businessDate.gte = parseBusinessDate(bounds.from);
+    if (bounds.from) {
+      businessDate.gte = parseBusinessDate(bounds.from);
+    }
+
+    const where: Prisma.ExpenseWhereInput = {
+      voidedAt: null,
+      businessDate,
+    };
+
+    const result = await db.expense.aggregate({
+      where,
+      _sum: { amount: true },
+    });
+
+    return result._sum.amount?.toFixed(2) ?? "0.00";
+  } catch {
+    return "0.00";
   }
-
-  const where: Prisma.ExpenseWhereInput = {
-    voidedAt: null,
-    businessDate,
-  };
-
-  const result = await db.expense.aggregate({
-    where,
-    _sum: { amount: true },
-  });
-
-  return result._sum.amount?.toFixed(2) ?? "0.00";
 }

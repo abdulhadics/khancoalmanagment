@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "node --import tsx scripts/serve.ts dev",
     "start": "node --import tsx scripts/serve.ts start",
-    "build": "next build",
+    "build": "node scripts/build.mjs",
     "lint": "eslint .",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",

@@ -22,34 +22,38 @@ export async function readNotificationsList(
 ) {
   requirePermission(actor, "notifications.view");
 
-  // Sync latest system alerts dynamically
-  await syncSystemNotifications(database).catch(() => {});
+  try {
+    // Sync latest system alerts dynamically
+    await syncSystemNotifications(database).catch(() => {});
 
-  const where: Prisma.NotificationWhereInput = {
-    isDismissed: false,
-  };
+    const where: Prisma.NotificationWhereInput = {
+      isDismissed: false,
+    };
 
-  if (filters.unreadOnly) {
-    where.isRead = false;
+    if (filters.unreadOnly) {
+      where.isRead = false;
+    }
+
+    const list = await database.notification.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    });
+
+    return list.map((item) => ({
+      id: String(item.id),
+      type: item.type,
+      title: item.title,
+      message: item.message,
+      customerId: item.customerId,
+      supplierId: item.supplierId,
+      isRead: item.isRead,
+      isDismissed: item.isDismissed,
+      createdAt: item.createdAt.toISOString(),
+    }));
+  } catch {
+    return [];
   }
-
-  const list = await database.notification.findMany({
-    where,
-    orderBy: { createdAt: "desc" },
-    take: 50,
-  });
-
-  return list.map((item) => ({
-    id: String(item.id),
-    type: item.type,
-    title: item.title,
-    message: item.message,
-    customerId: item.customerId,
-    supplierId: item.supplierId,
-    isRead: item.isRead,
-    isDismissed: item.isDismissed,
-    createdAt: item.createdAt.toISOString(),
-  }));
 }
 
 export async function readUnreadNotificationCount(
@@ -58,12 +62,16 @@ export async function readUnreadNotificationCount(
 ) {
   requirePermission(actor, "notifications.view");
 
-  return database.notification.count({
-    where: {
-      isRead: false,
-      isDismissed: false,
-    },
-  });
+  try {
+    return await database.notification.count({
+      where: {
+        isRead: false,
+        isDismissed: false,
+      },
+    });
+  } catch {
+    return 0;
+  }
 }
 
 export async function markNotificationRead(
