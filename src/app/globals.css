@@ -102,6 +102,19 @@ button:not(:disabled) {
   background: #6344bf;
 }
 
+.brand-mark-logo {
+  background: #ffffff;
+  padding: 2px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+.brand-logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
 .workspace-brand strong,
 .workspace-brand small {
   display: block;

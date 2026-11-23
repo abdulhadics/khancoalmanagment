@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, Menu, Truck, X } from "lucide-react";
+import { ChevronDown, Menu, X } from "lucide-react";
 import Link, { type LinkProps } from "next/link";
 import { usePathname } from "next/navigation";
 import { useRef, useState } from "react";
@@ -42,8 +42,15 @@ function SidebarNav({
   return (
     <>
       <Link href="/" className="workspace-brand" onNavigate={handleNavigation}>
-        <span className="brand-mark">
-          <Truck aria-hidden="true" size={20} strokeWidth={2.2} />
+        <span className="brand-mark brand-mark-logo">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/logo.png"
+            alt={common.product}
+            width={34}
+            height={34}
+            className="brand-logo-img"
+          />
         </span>
         <span>
           <strong>{common.product}</strong>

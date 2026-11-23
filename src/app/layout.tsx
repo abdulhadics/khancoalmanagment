@@ -12,6 +12,13 @@ export const metadata: Metadata = {
   },
   description: messages.setup.description,
   robots: { index: false, follow: false },
+  icons: {
+    icon: [
+      { url: "/logo.png", type: "image/png" },
+      { url: "/favicon.ico", sizes: "any" },
+    ],
+    apple: "/logo.png",
+  },
 };
 
 export default async function RootLayout({
