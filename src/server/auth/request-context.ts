@@ -23,9 +23,24 @@ export async function requireActor() {
 
 export async function assertActionOrigin() {
   const request = await headers();
-  if (request.get("origin") !== readEnvironment().APP_ORIGIN) {
-    throw new Error("Request origin was rejected.");
+  const origin = request.get("origin");
+  if (!origin) return;
+
+  const configuredOrigin = readEnvironment().APP_ORIGIN;
+  if (configuredOrigin && origin === configuredOrigin) return;
+
+  const host = request.get("x-forwarded-host") ?? request.get("host");
+  const proto = request.get("x-forwarded-proto") ?? "https";
+  if (
+    host &&
+    (origin === `${proto}://${host}` ||
+      origin === `https://${host}` ||
+      origin === `http://${host}`)
+  ) {
+    return;
   }
+
+  throw new Error("Request origin was rejected.");
 }
 
 export async function getRequestContext() {
