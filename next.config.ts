@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  serverExternalPackages: ["pdfkit"],
   outputFileTracingIncludes: {
     "/{account/vouchers/**,details/**/export,orders/**/slip,orders/print,reports/**/export}":
       [

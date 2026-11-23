@@ -3,6 +3,10 @@ import { createRequire } from "node:module";
 import { join } from "node:path";
 
 import PDFDocument from "pdfkit";
+// @ts-expect-error - pdfkit standard-fonts export definitions
+import Helvetica from "pdfkit/standard-fonts/Helvetica";
+// @ts-expect-error - pdfkit standard-fonts export definitions
+import HelveticaBold from "pdfkit/standard-fonts/HelveticaBold";
 
 import { formatDocumentDate } from "@/domain/document-format";
 import { documentPrint } from "@/i18n/messages/print-en";
@@ -224,9 +228,9 @@ export function renderPdf(
         doc.registerFont("Inter Semibold", fonts.semibold);
         doc.font("Inter");
       } else {
-        doc.registerFont("Inter", "Helvetica");
-        doc.registerFont("Inter Semibold", "Helvetica-Bold");
-        doc.font("Helvetica");
+        doc.registerFont("Inter", Helvetica);
+        doc.registerFont("Inter Semibold", HelveticaBold);
+        doc.font("Inter");
       }
       doc.on("pageAdded", () => addLetterhead(doc, options.profile));
       doc.addPage();
