@@ -1,6 +1,6 @@
 export const en = {
   common: {
-    product: "KhanCoalSupplier",
+    product: "Faisal Coal Dealer",
     tagline: "Coal Supply Management",
     skip: "Skip to main content",
     workspace: "Workspace",

@@ -8,7 +8,7 @@ import { messages } from "@/i18n";
 export const metadata: Metadata = {
   title: {
     default: messages.common.product,
-    template: "%s | KhanCoalSupplier",
+    template: "%s | Faisal Coal Dealer",
   },
   description: messages.setup.description,
   robots: { index: false, follow: false },

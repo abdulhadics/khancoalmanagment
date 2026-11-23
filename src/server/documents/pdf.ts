@@ -192,7 +192,7 @@ export function renderPdf(
       },
       info: {
         Title: options.title,
-        Creator: "KhanCoalSupplier",
+        Creator: "Faisal Coal Dealer",
         CreationDate: options.generatedAt,
       },
     });

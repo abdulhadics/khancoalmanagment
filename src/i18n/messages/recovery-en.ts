@@ -1,8 +1,8 @@
 export const recoveryEmail = {
-  subject: "Reset your KhanCoalSupplier password",
+  subject: "Reset your Faisal Coal Dealer password",
   text: (resetUrl: string, validMinutes: number) =>
     [
-      "Use this link to reset your KhanCoalSupplier password.",
+      "Use this link to reset your Faisal Coal Dealer password.",
       "",
       resetUrl,
       "",
