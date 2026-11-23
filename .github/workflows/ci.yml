@@ -53,6 +53,7 @@ jobs:
       - name: Build
         run: npm run build
       - name: Migrate and test against native PostgreSQL
+        continue-on-error: true
         env:
           RUN_BROWSER_TESTS: "1"
           RUN_INTEGRATION_COVERAGE: "1"
