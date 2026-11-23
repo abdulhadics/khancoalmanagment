@@ -36,8 +36,9 @@ export async function GET(
     );
   } catch (error) {
     console.error("Export details failed:", error);
+    const message = error instanceof Error ? error.message : documentPrint.unavailable;
     return printTextResponse(
-      documentPrint.unavailable,
+      message || documentPrint.unavailable,
       500,
     );
   }
