@@ -455,6 +455,7 @@ export default async function AccountPage({
             preferences={preferences}
             initialKey={randomUUID()}
             initialParty={value(query, "receive")}
+            managesBankAccounts={can(actor.roleCode, "settings.manage")}
           />
         </section>
         <section
@@ -469,6 +470,7 @@ export default async function AccountPage({
             preferences={preferences}
             initialKey={randomUUID()}
             initialParty={value(query, "pay")}
+            managesBankAccounts={can(actor.roleCode, "settings.manage")}
           />
         </section>
       </div>

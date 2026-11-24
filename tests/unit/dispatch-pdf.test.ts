@@ -48,7 +48,7 @@ function pageCount(body: Uint8Array): number {
 }
 
 describe("dispatch documents", () => {
-  it("renders a letterhead slip as one private inline PDF page", async () => {
+  it("renders a letterhead slip as one private PDF download", async () => {
     const body = await renderDispatchSlip({
       ...document,
       row,
@@ -60,7 +60,7 @@ describe("dispatch documents", () => {
     expect(response.headers.get("Content-Type")).toBe("application/pdf");
     expect(response.headers.get("Cache-Control")).toBe("private, no-store");
     expect(response.headers.get("Content-Disposition")).toBe(
-      'inline; filename="dispatch-ORD-2026-0184.pdf"',
+      'attachment; filename="dispatch-ORD-2026-0184.pdf"',
     );
   });
 

@@ -147,7 +147,7 @@ export async function readDailyOrders(
   const businessDate = parseBusinessDate(dateKey);
   const pageSize = 25;
   if (actor.roleCode === "OPERATOR" && dateKey !== todayBusinessDate()) {
-    return { rows: [], page: 1, pages: 1 };
+    return { rows: [], count: 0, page: 1, pages: 1 };
   }
   const where: Prisma.OrderWhereInput = {
     businessDate,
@@ -169,6 +169,7 @@ export async function readDailyOrders(
       });
       return {
         rows: rows.map((row) => dispatchOrder(row, financial)),
+        count,
         page: currentPage,
         pages,
       };

@@ -229,6 +229,11 @@ function GridForm({
   const [date, setDate] = useState(initialDate);
   const [count, setCount] = useState("1");
   const [rows, setRows] = useState([makeDraft(1, initial)]);
+  const requestedRows = Number(count);
+  const validRowCount =
+    Number.isInteger(requestedRows) &&
+    requestedRows >= 1 &&
+    requestedRows <= 100;
   const [customers, setCustomers] = useState(options.customers);
   const [suppliers, setSuppliers] = useState(options.suppliers);
   const [sameSupplier, setSameSupplier] = useState(false);
@@ -239,6 +244,7 @@ function GridForm({
   } | null>(null);
   const [submittedRows, setSubmittedRows] = useState<number[]>([]);
   const validationId = useId();
+  const rowCountId = useId();
   const batchForm = useRef<HTMLFormElement>(null);
   const nextId = useRef(2);
   const dirty = rows.some((row) =>
@@ -306,7 +312,7 @@ function GridForm({
   }
 
   function addRow(source?: Draft) {
-    if (rows.length >= 100) return;
+    if (pending || rows.length >= 100) return;
     const shared = sameSupplier
       ? {
           supplierId: rows[0].supplierId,
@@ -333,9 +339,8 @@ function GridForm({
   }
 
   function generateRows() {
-    const desired = Number(count);
-    if (!Number.isInteger(desired) || desired < 1 || desired > 100) return;
-    if (desired < rows.length && dirty && !window.confirm(t.discardRows))
+    if (pending || !validRowCount) return;
+    if (requestedRows < rows.length && dirty && !window.confirm(t.discardRows))
       return;
     const first = rows[0];
     const shared = sameSupplier
@@ -343,7 +348,7 @@ function GridForm({
       : {};
     setRows(
       Array.from(
-        { length: desired },
+        { length: requestedRows },
         (_, index) => rows[index] ?? makeDraft(nextId.current++, shared),
       ),
     );
@@ -461,13 +466,21 @@ function GridForm({
               value={count}
               min={1}
               max={100}
+              aria-describedby={rowCountId}
+              aria-invalid={!validRowCount || undefined}
               onChange={(event) => setCount(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && !event.altKey && !event.ctrlKey) {
+                  event.preventDefault();
+                  generateRows();
+                }
+              }}
             />
           </label>
           <Button
             type="button"
             variant="outline"
-            disabled={pending}
+            disabled={pending || !validRowCount}
             onClick={generateRows}
           >
             {t.generate}
@@ -511,6 +524,13 @@ function GridForm({
               {t.copyDown}
             </Button>
           </div>
+          <p
+            id={rowCountId}
+            aria-live="polite"
+            className="basis-full text-sm text-muted-foreground"
+          >
+            {t.rowCount(rows.length)}
+          </p>
         </div>
         <input
           type="hidden"

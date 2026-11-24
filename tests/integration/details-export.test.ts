@@ -338,7 +338,7 @@ describe("detail exports on PostgreSQL", () => {
       );
       expect(singleSupplier.status).toBe(200);
       expect(singleSupplier.headers.get("Content-Disposition")).toMatch(
-        /^inline;/,
+        /^attachment;/,
       );
       expect(
         Buffer.from(await singleSupplier.arrayBuffer()).toString("latin1"),

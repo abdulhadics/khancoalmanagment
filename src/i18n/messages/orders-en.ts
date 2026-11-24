@@ -7,6 +7,8 @@ export const orders = {
   entries: "Number of entries",
   date: "Dispatch date",
   generate: "Generate rows",
+  rowCount: (count: number) =>
+    `${count} ${count === 1 ? "row" : "rows"} in this batch. Enter a number from 1 to 100 to change it.`,
   addRow: "Add row",
   clear: "Clear form",
   discard: "Discard the unsaved dispatch entries?",
@@ -54,6 +56,8 @@ export const orders = {
   confirmCreditLimit: "Confirm dispatch above the credit limit",
   perWeight: (unit: string) => `per ${unit}`,
   dateHeading: "Orders for selected date",
+  dailyCount: (count: number) =>
+    `${count} saved ${count === 1 ? "order" : "orders"} for this date`,
   filter: "Show orders",
   print: "Print day report",
   slip: "Slip PDF",

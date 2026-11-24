@@ -19,6 +19,7 @@ type Props = {
   initialKey: string;
   initialParty?: string;
   showHeading?: boolean;
+  managesBankAccounts?: boolean;
 };
 
 const inputClass =
@@ -67,6 +68,7 @@ function PaymentDraft({
   preferences,
   initialParty,
   showHeading = true,
+  managesBankAccounts = false,
   requestKey,
   state,
   action,
@@ -99,9 +101,10 @@ function PaymentDraft({
   );
   const selectedBank = accounts.some(({ id }) => id === bank)
     ? bank
-    : method === "CASH" && accounts.length === 1
+    : accounts.length === 1
       ? accounts[0].id
       : "";
+  const missingAccount = bankRequired && accounts.length === 0;
   const selected = options.parties.find(({ id }) => id === partyId);
   const catalogBalance =
     date === options.businessDate ? selected?.balance : undefined;
@@ -220,10 +223,7 @@ function PaymentDraft({
             name="method"
             className={inputClass}
             value={method}
-            onChange={(event) => {
-              setMethod(event.target.value as PaymentMethod);
-              setBank("");
-            }}
+            onChange={(event) => setMethod(event.target.value as PaymentMethod)}
           >
             {Object.entries(t.methods).map(([value, text]) => (
               <option key={value} value={value}>
@@ -253,6 +253,7 @@ function PaymentDraft({
               className={inputClass}
               value={selectedBank}
               required
+              disabled={missingAccount}
               aria-invalid={invalid("bankId")}
               onChange={(event) => setBank(event.target.value)}
             >
@@ -263,12 +264,25 @@ function PaymentDraft({
                 </option>
               ))}
             </select>
-            {!accounts.length && (
-              <span className="text-xs font-normal text-muted-foreground">
-                {t.noBank}
-              </span>
-            )}
           </label>
+        )}
+        {missingAccount && (
+          <p
+            role="status"
+            className="text-sm text-muted-foreground sm:col-span-2"
+          >
+            {method === "CASH" ? t.noCashAccount : t.noBank}{" "}
+            {managesBankAccounts ? (
+              <Link
+                href="/settings#payment-accounts"
+                className="font-semibold underline"
+              >
+                {t.openPaymentAccounts}
+              </Link>
+            ) : (
+              t.askOwnerForPaymentAccount
+            )}
+          </p>
         )}
         <label className={label}>
           {t.amount}
@@ -315,7 +329,7 @@ function PaymentDraft({
           {issue.excess && t.excess(formatCurrency(issue.excess, preferences))}
         </p>
       )}
-      <Button type="submit" disabled={pending}>
+      <Button type="submit" disabled={pending || missingAccount}>
         {pending ? t.saving : receiving ? t.postReceipt : t.postPayment}
       </Button>
     </form>

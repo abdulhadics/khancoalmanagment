@@ -7,7 +7,11 @@ import { PaymentForm } from "@/app/(workspace)/account/payment-form";
 import { Button } from "@/components/ui/button";
 import { account as t } from "@/i18n/messages/account-en";
 
-export function QuickReceive() {
+export function QuickReceive({
+  managesBankAccounts,
+}: {
+  managesBankAccounts: boolean;
+}) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [result, setResult] = useState<Awaited<
     ReturnType<typeof openReceiptForm>
@@ -77,6 +81,7 @@ export function QuickReceive() {
             preferences={result.preferences}
             initialKey={result.key}
             showHeading={false}
+            managesBankAccounts={managesBankAccounts}
           />
         )}
       </dialog>

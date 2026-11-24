@@ -1,4 +1,5 @@
 import { randomBytes } from "node:crypto";
+import { writeFile } from "node:fs/promises";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { hashPassword } from "../../src/server/auth/password";
@@ -277,7 +278,8 @@ test("Owner records opening balances and configures company settings", async ({
 
 test("Owner adds dispatch parties in place and posts an exact-priced truck", async ({
   page,
-}) => {
+}, testInfo) => {
+  test.setTimeout(90_000);
   const password = randomBytes(24).toString("base64url");
   await createBrowserOwner("browser-dispatch-owner", password, false);
   await logIn(page, "browser-dispatch-owner", password);
@@ -420,12 +422,65 @@ test("Owner adds dispatch parties in place and posts an exact-priced truck", asy
   await page.getByRole("button", { name: "Void order", exact: true }).click();
   await expect(page.getByRole("status")).toHaveText("Dispatch saved.");
   await expect(page.getByRole("row", { name: /KCS-901/ })).toHaveCount(0);
+
+  const rowCount = page.getByRole("spinbutton", { name: "Number of entries" });
+  await rowCount.fill("6");
+  await rowCount.press("Enter");
+  await expect(
+    page.getByRole("group", { name: "Truck 6", exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Add row", exact: true }).click();
+  await expect(page.getByText(/7 rows in this batch/)).toBeVisible();
+  const dispatchSupplier = await page
+    .getByRole("combobox", { name: "Supplier 1" })
+    .getByRole("option", { name: /Dispatch Test Mine/ })
+    .getAttribute("value");
+  expect(dispatchSupplier).toBeTruthy();
+  for (let row = 1; row <= 7; row++) {
+    await page
+      .getByRole("combobox", { name: `Customer ${row}`, exact: true })
+      .selectOption(dispatchCustomer);
+    await page
+      .getByRole("combobox", { name: `Supplier ${row}`, exact: true })
+      .selectOption(dispatchSupplier!);
+    await page
+      .getByRole("textbox", { name: `Vehicle number ${row}`, exact: true })
+      .fill(`BATCH-TEST-${row}`);
+    await page
+      .getByRole("textbox", { name: `Truck weight ${row}`, exact: true })
+      .fill("10");
+    await page
+      .getByRole("textbox", { name: `Purchase rate ${row}`, exact: true })
+      .fill("3");
+    await page
+      .getByRole("textbox", { name: `Sell rate ${row}`, exact: true })
+      .fill("5");
+  }
+  await page.getByRole("button", { name: "Add all orders" }).click();
+  await expect(
+    page.getByRole("status").filter({ hasText: "7 orders saved." }),
+  ).toBeVisible();
+  await page.getByRole("link", { name: "View orders for this date" }).click();
+  await expect(page.getByRole("row", { name: /BATCH-TEST-/ })).toHaveCount(7);
+  const printUrl = await page
+    .getByRole("link", { name: "Print day report" })
+    .getAttribute("href");
+  const register = await page.request.get(printUrl!);
+  expect(register.ok()).toBe(true);
+  const registerPdf = await register.body();
+  expect(registerPdf.subarray(0, 4).toString()).toBe("%PDF");
+  const registerPath = testInfo.outputPath("dispatch-register.pdf");
+  await writeFile(registerPath, registerPdf);
+  await testInfo.attach("dispatch-register", {
+    path: registerPath,
+    contentType: "application/pdf",
+  });
 });
 
 test("Owner records a quick receipt and a supplier payment with voucher PDFs", async ({
   page,
 }) => {
-  test.setTimeout(60_000);
+  test.setTimeout(90_000);
   const password = randomBytes(24).toString("base64url");
   await createBrowserOwner("browser-account-owner", password, false);
   await logIn(page, "browser-account-owner", password);
@@ -587,5 +642,56 @@ test("Owner records a quick receipt and a supplier payment with voucher PDFs", a
       page.getByRole("heading", { name: heading, exact: true }),
     ).toBeVisible();
     await expect(page.getByText(total).first()).toBeVisible();
+  }
+
+  const accountUrl = `/account?pay=${supplierId}#supplier-payment`;
+  await page.goto(accountUrl);
+  const payment = page.getByRole("region", { name: "Supplier payment" });
+  const paymentType = payment.getByLabel("Payment type");
+  await paymentType.selectOption("BANK_TRANSFER");
+  await expect(
+    payment.getByText(/requires an active bank account/),
+  ).toBeVisible();
+  await expect(
+    payment.getByRole("button", { name: "Record payment" }),
+  ).toBeDisabled();
+  await payment
+    .getByRole("link", { name: "Open bank and cash settings" })
+    .click();
+  const settings = page.getByRole("region", { name: "Bank and cash accounts" });
+  const addAccount = settings.locator("form").filter({
+    has: page.getByRole("button", { name: "Add account", exact: true }),
+  });
+  await addAccount.getByLabel("Account name").fill("Workflow Bank");
+  await addAccount.getByRole("button", { name: "Add account" }).click();
+  await expect(
+    settings.getByText("Workflow Bank", { exact: true }),
+  ).toBeVisible();
+
+  await page.goto(accountUrl);
+  for (const method of [
+    "BANK_TRANSFER",
+    "ONLINE_IBFT",
+    "CHEQUE",
+    "PAY_ORDER",
+    "ADJUSTMENT",
+  ]) {
+    await paymentType.selectOption(method);
+    const bankAccount = payment.getByLabel("Bank or cash account");
+    if (method === "ADJUSTMENT") {
+      await expect(bankAccount).toHaveCount(0);
+      await payment.getByLabel("Notes").fill("Reconciliation test");
+    } else {
+      await expect(bankAccount.locator("option:checked")).toHaveText(
+        "Workflow Bank",
+      );
+      await payment.getByLabel("Reference number").fill(`TEST-${method}`);
+    }
+    await payment.getByLabel("Amount", { exact: true }).fill("10");
+    await payment.getByRole("button", { name: "Record payment" }).click();
+    await expect(paymentType).toHaveValue("CASH");
+    await expect(
+      payment.getByRole("link", { name: "Open voucher PDF" }),
+    ).toBeVisible();
   }
 });

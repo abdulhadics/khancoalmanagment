@@ -54,7 +54,11 @@ export default async function WorkspaceLayout({
             <CalendarDays aria-hidden="true" size={17} />
             {today}
           </span>
-          {can(actor.roleCode, "account.manage") && <QuickReceive />}
+          {can(actor.roleCode, "account.manage") && (
+            <QuickReceive
+              managesBankAccounts={can(actor.roleCode, "settings.manage")}
+            />
+          )}
           {can(actor.roleCode, "orders.create") && (
             <Button asChild size="sm">
               <Link href="/orders" aria-label={orders.newOrder}>

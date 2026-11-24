@@ -142,6 +142,11 @@ export default async function OrderEntryPage({
             <h2 id="daily-orders-title" className="text-lg font-semibold">
               {t.dateHeading}
             </h2>
+            {daily.count > 0 && (
+              <p className="mt-1 text-sm text-muted-foreground">
+                {t.dailyCount(daily.count)}
+              </p>
+            )}
             {!dateLocked && (
               <form
                 method="get"
